@@ -53,20 +53,22 @@ export const ProductModal = ({ product, onClose, onAddToCart, onWhatsApp, colors
         className="w-full max-w-2xl max-h-[90vh] rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in flex flex-col"
         style={{ backgroundColor: colors.card }}
       >
-        {/* Header */}
-        <div className="relative shrink-0">
-          {/* Close Button */}
+        {/* Header with close button only - fixed */}
+        <div className="relative shrink-0 p-4 flex justify-end">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 p-2 rounded-full backdrop-blur-sm"
+            className="p-2 rounded-full backdrop-blur-sm"
             style={{ backgroundColor: colors.background + "cc" }}
           >
             <X className="h-5 w-5" style={{ color: colors.text }} />
           </button>
+        </div>
 
-          {/* Image Gallery */}
+        {/* Scrollable Content - Image scrolls with content */}
+        <div className="flex-1 overflow-y-auto px-6 pb-4">
+          {/* Image Gallery - Now inside scrollable area */}
           {images.length > 0 ? (
-            <div className="relative">
+            <div className="relative mb-6 rounded-2xl overflow-hidden">
               <div
                 className="w-full aspect-video overflow-hidden"
                 style={{ backgroundColor: colors.border }}
@@ -113,116 +115,114 @@ export const ProductModal = ({ product, onClose, onAddToCart, onWhatsApp, colors
             </div>
           ) : (
             <div
-              className="w-full aspect-video flex items-center justify-center"
+              className="w-full aspect-video flex items-center justify-center mb-6 rounded-2xl"
               style={{ backgroundColor: colors.border }}
             >
-              <Package className="h-20 w-20" style={{ color: colors.muted }} />
+              <Package className="h-16 w-16" style={{ color: colors.muted }} />
             </div>
           )}
-        </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ backgroundColor: colors.background }}>
-          {/* Category & Code */}
-          <div className="flex items-center gap-3 mb-3">
-            {product.category && (
-              <span
-                className="text-xs px-3 py-1 rounded-full"
-                style={{ backgroundColor: colors.buttons + "20", color: colors.buttons }}
-              >
-                {product.category}
-              </span>
-            )}
+          {/* Product Info */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold" style={{ color: colors.text }}>
+                {product.name}
+              </h2>
+              {product.category && (
+                <p className="text-sm mt-1" style={{ color: colors.muted }}>
+                  {product.category}
+                </p>
+              )}
+            </div>
+
             <button
               onClick={copyCode}
-              className="flex items-center gap-1 text-xs px-3 py-1 rounded-full hover:scale-105 transition-transform"
-              style={{ backgroundColor: colors.border, color: colors.muted }}
+              className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
+              style={{ backgroundColor: colors.border, color: colors.text }}
             >
-              <Copy className="h-3 w-3" />
-              {product.code || product.id.slice(0, 6).toUpperCase()}
+              <Copy className="h-4 w-4" />
+              Código: {product.code || product.id.slice(0, 6).toUpperCase()}
             </button>
-          </div>
 
-          {/* Name & Price */}
-          <h2 className="text-2xl font-bold mb-2" style={{ color: colors.text }}>
-            {product.name}
-          </h2>
-          <p className="text-3xl font-bold mb-4" style={{ color: colors.accent }}>
-            {formatPrice(product.price)}
-          </p>
-
-          {/* Description */}
-          {product.description && (
-            <p className="text-sm leading-relaxed mb-6" style={{ color: colors.muted }}>
-              {product.description}
+            <p className="text-3xl font-bold" style={{ color: colors.buttons }}>
+              {formatPrice(product.price)}
             </p>
-          )}
 
-          {/* Quantity Selector */}
-          <div className="flex items-center gap-4 mb-6">
-            <span className="text-sm font-medium" style={{ color: colors.text }}>
-              Quantidade:
-            </span>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
-                style={{ backgroundColor: colors.border, color: colors.text }}
+            {product.description && (
+              <p className="leading-relaxed" style={{ color: colors.muted }}>
+                {product.description}
+              </p>
+            )}
+
+            {/* Quantity Selector */}
+            <div className="flex items-center gap-4">
+              <span style={{ color: colors.text }}>Quantidade:</span>
+              <div
+                className="flex items-center gap-3 px-4 py-2 rounded-xl"
+                style={{ backgroundColor: colors.border }}
               >
-                -
-              </button>
-              <span className="w-10 text-center text-lg font-semibold" style={{ color: colors.text }}>
-                {quantity}
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg font-bold transition-colors"
+                  style={{ backgroundColor: colors.muted, color: colors.text }}
+                >
+                  -
+                </button>
+                <span className="w-8 text-center font-bold" style={{ color: colors.text }}>
+                  {quantity}
+                </span>
+                <button
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg font-bold transition-colors"
+                  style={{ backgroundColor: colors.buttons, color: "#fff" }}
+                >
+                  +
+                </button>
+              </div>
+              <span className="text-lg font-semibold" style={{ color: colors.muted }}>
+                = {formatPrice(product.price * quantity)}
               </span>
-              <button
-                onClick={() => setQuantity((q) => q + 1)}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-xl font-bold"
-                style={{ backgroundColor: colors.buttons, color: "#fff" }}
-              >
-                +
-              </button>
             </div>
-            <span className="text-sm" style={{ color: colors.muted }}>
-              = {formatPrice(product.price * quantity)}
-            </span>
+
+            {/* Reviews Section */}
+            <button
+              onClick={() => setShowReviews(!showReviews)}
+              className="text-sm font-medium hover:underline"
+              style={{ color: colors.buttons }}
+            >
+              {showReviews ? "Ocultar avaliações" : "Ver avaliações"}
+            </button>
+
+            {showReviews && (
+              <ProductReviews productId={product.id} colors={colors} />
+            )}
           </div>
-
-          {/* Reviews Toggle */}
-          <button
-            onClick={() => setShowReviews(!showReviews)}
-            className="text-sm font-medium mb-4 flex items-center gap-2 hover:underline"
-            style={{ color: colors.accent }}
-          >
-            {showReviews ? "Ocultar avaliações" : "Ver avaliações"}
-          </button>
-
-          {showReviews && <ProductReviews productId={product.id} colors={colors} />}
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer Actions - Fixed at bottom */}
         <div
-          className="p-5 border-t shrink-0 flex gap-3"
-          style={{ borderColor: colors.border, backgroundColor: colors.card }}
+          className="shrink-0 border-t p-4 flex gap-3"
+          style={{ borderColor: colors.border }}
         >
           <Button
             onClick={onWhatsApp}
             variant="outline"
-            className="flex-1"
-            style={{ borderColor: "#22C55E", color: "#22C55E" }}
+            className="flex-1 h-12 rounded-xl flex items-center justify-center gap-2"
+            style={{
+              backgroundColor: "transparent",
+              borderColor: colors.border,
+              color: colors.text,
+            }}
           >
-            <MessageCircle className="mr-2 h-4 w-4" />
+            <MessageCircle className="h-5 w-5" />
             WhatsApp
           </Button>
           <Button
-            onClick={() => {
-              onAddToCart(product, quantity);
-              onClose();
-              toast.success(`${quantity}x ${product.name} adicionado ao carrinho!`);
-            }}
-            className="flex-1"
+            onClick={() => onAddToCart(product, quantity)}
+            className="flex-1 h-12 rounded-xl flex items-center justify-center gap-2"
             style={{ backgroundColor: colors.buttons, color: "#fff" }}
           >
-            <ShoppingCart className="mr-2 h-4 w-4" />
+            <ShoppingCart className="h-5 w-5" />
             Adicionar
           </Button>
         </div>

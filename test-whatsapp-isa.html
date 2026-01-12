@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste WhatsApp ISA</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .qr-code { max-width: 300px; margin: 10px 0; }
+        pre { background-color: #f4f4f4; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Teste de Integração WhatsApp ISA</h1>
+    
+    <div class="test-section">
+        <h2>1. Testar Conexão com WhatsApp ISA</h2>
+        <button onclick="testConnection()">Testar Conexão</button>
+        <div id="connection-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Testar Sessões Disponíveis</h2>
+        <button onclick="testSessions()">Listar Sessões</button>
+        <div id="sessions-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Testar Status da Sessão</h2>
+        <input type="text" id="client-id" value="test_cpf" placeholder="Client ID">
+        <button onclick="testSessionStatus()">Verificar Status</button>
+        <div id="status-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Testar QR Code</h2>
+        <input type="text" id="qr-client-id" value="test_cpf" placeholder="Client ID">
+        <button onclick="testQRCode()">Obter QR Code</button>
+        <div id="qr-result"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = `http://${window.location.hostname}:3001/api`;
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('connection-result');
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/list`);
+                const data = await response.json();
+                
+                resultDiv.className = 'test-section success';
+                resultDiv.innerHTML = `
+                    <h3>✅ Conexão bem-sucedida!</h3>
+                    <p>Servidor WhatsApp ISA está respondendo.</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Erro de Conexão</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        async function testSessions() {
+            const resultDiv = document.getElementById('sessions-result');
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/list`);
+                const data = await response.json();
+                
+                resultDiv.className = 'test-section success';
+                resultDiv.innerHTML = `
+                    <h3>✅ Sessões Disponíveis</h3>
+                    <p>Total: ${data.sessions.length} sessões</p>
+                    <ul>
+                        ${data.sessions.map(session => `<li>${session.client_id} (${session.client_name})</li>`).join('')}
+                    </ul>
+                `;
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Erro ao Listar Sessões</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        async function testSessionStatus() {
+            const clientId = document.getElementById('client-id').value;
+            const resultDiv = document.getElementById('status-result');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/sessions/${clientId}/status`);
+                const data = await response.json();
+                
+                resultDiv.className = 'test-section success';
+                resultDiv.innerHTML = `
+                    <h3>✅ Status da Sessão</h3>
+                    <p><strong>Cliente:</strong> ${data.dbStatus.client_id}</p>
+                    <p><strong>Status:</strong> ${data.dbStatus.status}</p>
+                    <p><strong>Conectado:</strong> ${data.isConnected ? 'Sim' : 'Não'}</p>
+                    <p><strong>Última Atividade:</strong> ${data.dbStatus.last_activity}</p>
+                    ${data.dbStatus.qr_code ? '<p><strong>QR Code:</strong> Disponível</p>' : '<p><strong>QR Code:</strong> Não disponível</p>'}
+                `;
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Erro ao Verificar Status</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        async function testQRCode() {
+            const clientId = document.getElementById('qr-client-id').value;
+            const resultDiv = document.getElementById('qr-result');
+            
+            try {
+                // Primeiro tentar o endpoint de QR Code
+                let qrCodeData;
+                try {
+                    const response = await fetch(`${API_BASE_URL}/qr/${clientId}`);
+                    if (!response.ok) {
+                        throw new Error('Endpoint de QR Code falhou');
+                    }
+                    qrCodeData = await response.json();
+                } catch (qrError) {
+                    // Se falhar, tentar obter do status da sessão (fallback)
+                    console.log('Endpoint de QR Code falhou, tentando fallback...');
+                    const statusResponse = await fetch(`${API_BASE_URL}/sessions/${clientId}/status`);
+                    const statusData = await statusResponse.json();
+                    
+                    if (statusData.dbStatus.qr_code) {
+                        qrCodeData = {
+                            success: true,
+                            qr_code: statusData.dbStatus.qr_code,
+                            message: 'QR Code obtido do status da sessão (fallback)'
+                        };
+                    } else {
+                        throw new Error('QR Code não encontrado nem no endpoint nem no status');
+                    }
+                }
+                
+                resultDiv.className = 'test-section success';
+                resultDiv.innerHTML = `
+                    <h3>✅ QR Code Obtido</h3>
+                    <p><strong>Mensagem:</strong> ${qrCodeData.message}</p>
+                    <img src="${qrCodeData.qr_code}" alt="QR Code" class="qr-code">
+                    <details>
+                        <summary>Ver código base64</summary>
+                        <pre style="max-height: 100px; overflow-y: auto;">${qrCodeData.qr_code.substring(0, 100)}...</pre>
+                    </details>
+                `;
+            } catch (error) {
+                resultDiv.className = 'test-section error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Erro ao Obter QR Code</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+
+        // Testar conexão automaticamente ao carregar
+        window.addEventListener('load', () => {
+            testConnection();
+        });
+    </script>
+</body>
+</html>

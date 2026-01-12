@@ -1,0 +1,1436 @@
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Store,
+  MessageCircle,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Package,
+  ArrowLeft,
+  X,
+  Copy,
+  Sparkles,
+  ShoppingBag,
+  Send,
+  User,
+  Plus
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { ShoppingCart } from "@/components/vitrine/ShoppingCart";
+import { ProductModal } from "@/components/vitrine/ProductModal";
+import { WhatsAppContactModal } from "@/components/vitrine/WhatsAppContactModal";
+
+interface CartItem {
+  id: string;
+  code: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image_url?: string | null;
+}
+
+
+interface Category {
+  id: string;
+  name: string;
+  image_url: string | null;
+}
+
+interface Product {
+  id: string;
+  code: string | null;
+  name: string;
+  price: number;
+  description: string | null;
+  image_url: string | null;
+  category: string | null;
+}
+
+interface VitrineConfig {
+  name: string;
+  banner: string;
+  announcements: string;
+  theme: 'light' | 'dark' | 'custom';
+  colors: {
+    background: string;
+    text: string;
+    buttons: string;
+    accent: string;
+  };
+  whatsappNumber: string;
+  companyName: string;
+  cnpj: string;
+}
+
+const DEFAULT_COLORS = {
+  dark: {
+    background: '#0D0D0D',
+    text: '#FFFFFF',
+    buttons: '#9333EA',
+    accent: '#A855F7',
+    card: '#1E1E1E',
+    border: '#27272a',
+    muted: '#71717a'
+  },
+  light: {
+    background: '#FFFFFF',
+    text: '#1F2937',
+    buttons: '#7C3AED',
+    accent: '#8B5CF6',
+    card: '#F9FAFB',
+    border: '#E5E7EB',
+    muted: '#6B7280'
+  }
+};
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+// CSS Confetti Component
+const VitrineConfetti = ({ active }: { active: boolean }) => {
+  if (!active) return null;
+  
+  const confettiPieces = Array.from({ length: 50 }, (_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    animationDelay: `${Math.random() * 0.5}s`,
+    backgroundColor: ['#22c55e', '#10b981', '#34d399', '#6ee7b7', '#fbbf24', '#f59e0b', '#9333EA', '#A855F7'][Math.floor(Math.random() * 8)],
+    size: Math.random() * 8 + 4,
+  }));
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+      {confettiPieces.map((piece) => (
+        <div
+          key={piece.id}
+          className="absolute"
+          style={{
+            left: piece.left,
+            top: '-10px',
+            width: `${piece.size}px`,
+            height: `${piece.size}px`,
+            backgroundColor: piece.backgroundColor,
+            animationDelay: piece.animationDelay,
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+            animation: 'confetti-fall 2.5s ease-out forwards',
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes confetti-fall {
+          0% {
+            transform: translateY(0) rotate(0deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100vh) rotate(720deg);
+            opacity: 0;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+const Vitrine = () => {
+  const { cpf } = useParams<{ cpf: string }>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [config, setConfig] = useState<VitrineConfig | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [vitrineCategories, setVitrineCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentAnnouncement, setCurrentAnnouncement] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [showChatHelp, setShowChatHelp] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showWhatsAppCopyDialog, setShowWhatsAppCopyDialog] = useState(false);
+  const [copiedProductName, setCopiedProductName] = useState("");
+  const [whatsAppContactProduct, setWhatsAppContactProduct] = useState<Product | null>(null);
+  
+  // Cart & Modal State
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [matricula, setMatricula] = useState<string>("");
+
+  useEffect(() => {
+    if (!cpf) return;
+    loadVitrine();
+  }, [cpf]);
+
+  const loadVitrine = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const identifier = (cpf || '').trim();
+      console.log('[Vitrine] loading', { identifier });
+
+      const rpcPromise = supabase.rpc('get_public_vitrine', { identifier });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout_rpc_get_public_vitrine')), 10000)
+      );
+
+      const { data, error: rpcError } = await Promise.race([rpcPromise, timeoutPromise]);
+      console.log('[Vitrine] rpc result', { hasData: !!data, rpcError });
+
+      if (rpcError) {
+        console.error('RPC get_public_vitrine error:', rpcError);
+        throw rpcError;
+      }
+
+      if (!data || (data as any)?.error === 'user_not_found') {
+        setError('Erro ao carregar vitrine. Verifique o link.');
+        setProducts([]);
+        setConfig(null);
+        return;
+      }
+
+      const vitrineConfig = (data as any)?.vitrine?.config ?? null;
+      const vitrineProducts = Array.isArray((data as any)?.products) ? (data as any).products : [];
+      const vitrineCats = Array.isArray((data as any)?.categories) ? (data as any).categories : [];
+
+      const normalizedProducts: Product[] = vitrineProducts.map((p: any) => ({
+        id: String(p.id),
+        code: p.code ?? null,
+        name: String(p.name ?? ''),
+        price: typeof p.price === 'number' ? p.price : Number.parseFloat(String(p.price ?? '0')),
+        description: p.description ?? null,
+        image_url: p.image_url ?? null,
+        category: p.category ?? null,
+      }));
+
+      const normalizedCategories: Category[] = vitrineCats.map((c: any) => ({
+        id: String(c.id),
+        name: String(c.name ?? ''),
+        image_url: c.image_url ?? null,
+      }));
+
+      setProducts(normalizedProducts);
+      setVitrineCategories(normalizedCategories);
+      setConfig(vitrineConfig);
+      
+      // Get matricula from vitrine data
+      const vitrineMatricula = (data as any)?.matricula;
+      if (vitrineMatricula) {
+        setMatricula(vitrineMatricula);
+      }
+
+      if (normalizedProducts.length === 0 && !vitrineConfig) {
+        setError('Esta vitrine ainda não foi configurada.');
+      }
+    } catch (e) {
+      console.error('Error loading vitrine:', e);
+      setError('Erro ao carregar vitrine. Verifique o link.');
+    } finally {
+      setIsLoading(false);
+      // Show welcome screen for 2.5 seconds after loading
+      setShowWelcome(true);
+      setTimeout(() => setShowWelcome(false), 2500);
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(price);
+  };
+
+  const colors = useMemo(() => {
+    if (!config) return DEFAULT_COLORS.dark;
+
+    if (config.theme === 'custom' && config.colors) {
+      return {
+        background: config.colors.background,
+        text: config.colors.text,
+        buttons: config.colors.buttons,
+        accent: config.colors.accent,
+        card: config.colors.background === '#FFFFFF' || config.colors.background === '#ffffff'
+          ? '#F9FAFB'
+          : adjustBrightness(config.colors.background, 20),
+        border: config.colors.background === '#FFFFFF' || config.colors.background === '#ffffff'
+          ? '#E5E7EB'
+          : adjustBrightness(config.colors.background, 40),
+        muted: config.colors.text + '99'
+      };
+    }
+
+    return config.theme === 'light' ? DEFAULT_COLORS.light : DEFAULT_COLORS.dark;
+  }, [config]);
+
+  const isDark = colors.background === '#0D0D0D' || colors.background === '#000000' || colors.background.toLowerCase().includes('0d0d0d');
+
+  useEffect(() => {
+    if (!config?.announcements) return;
+
+    const announcementList = config.announcements.split('|').map(a => a.trim()).filter(Boolean);
+    if (announcementList.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentAnnouncement(prev => (prev + 1) % announcementList.length);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [config?.announcements]);
+
+  const announcements = useMemo(() => {
+    if (!config?.announcements) return [];
+    return config.announcements.split('|').map(a => a.trim()).filter(Boolean);
+  }, [config?.announcements]);
+
+  const categories = useMemo(() => {
+    if (vitrineCategories.length > 0) {
+      return vitrineCategories;
+    }
+    const cats = new Set<string>();
+    products.forEach(p => {
+      if (p.category) cats.add(p.category);
+    });
+    return Array.from(cats).map(name => ({ id: name, name, image_url: null }));
+  }, [products, vitrineCategories]);
+
+  const filteredProducts = useMemo(() => {
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return products.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        p.description?.toLowerCase().includes(query)
+      );
+    }
+    return products;
+  }, [products, searchQuery]);
+
+  const categoryProducts = useMemo(() => {
+    if (!selectedCategory) return [];
+    return products.filter(p => p.category === selectedCategory.name);
+  }, [products, selectedCategory]);
+
+  const copyProductCode = (product: Product) => {
+    const code = product.code || product.id.slice(0, 6).toUpperCase();
+    navigator.clipboard.writeText(code);
+    toast.success(`Código ${code} copiado!`);
+  };
+
+  const handleCopyForWhatsApp = (product: Product) => {
+    // New behavior: open WhatsApp contact modal
+    setWhatsAppContactProduct(product);
+  };
+
+  const handleProductWhatsApp = (product: Product) => {
+    // Alternative: open modal for specific product from ProductModal
+    setWhatsAppContactProduct(product);
+  };
+
+  // Initialize chat with welcome message when opened
+  useEffect(() => {
+    if (showChatHelp && chatMessages.length === 0) {
+      const welcomeMessage: ChatMessage = {
+        id: '0',
+        role: 'assistant',
+        content: 'Olá! 👋 Seja bem-vindo(a)!\n\nSou a assistente virtual da loja. Como posso ajudar você hoje?',
+        timestamp: new Date()
+      };
+      setChatMessages([welcomeMessage]);
+    }
+  }, [showChatHelp]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const handleSendChatMessage = async () => {
+    if (!chatInput.trim() || isSendingMessage) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: chatInput,
+      timestamp: new Date()
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsSendingMessage(true);
+
+    try {
+      // Load client config for AI
+      const identifier = (cpf || '').trim();
+      const { data: clientData } = await supabase.rpc('get_public_vitrine', { identifier });
+
+      const clientConfig = (clientData as any)?.config || {};
+
+      const { data, error } = await supabase.functions.invoke('test-behavior-ai', {
+        body: {
+          message: chatInput,
+          config: {
+            ...clientConfig,
+            products: products.map(p => ({
+              id: p.id,
+              code: p.code,
+              name: p.name,
+              price: p.price,
+              description: p.description,
+              category: p.category
+            }))
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.reply || "Desculpe, não consegui processar sua mensagem.",
+        timestamp: new Date()
+      };
+
+      setChatMessages(prev => [...prev, assistantMessage]);
+    } catch (e) {
+      console.error('Chat error:', e);
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "Desculpe, ocorreu um erro. Por favor, tente novamente ou entre em contato pelo WhatsApp.",
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  const handleCloseChat = () => {
+    setShowChatHelp(false);
+    // Clear messages after a delay to avoid visual glitch
+    setTimeout(() => setChatMessages([]), 300);
+  };
+
+  const openWhatsApp = () => {
+    if (config?.whatsappNumber) {
+      const phone = config.whatsappNumber.replace(/\D/g, '');
+      const message = encodeURIComponent(`Olá! Vi sua vitrine e gostaria de fazer um pedido.`);
+      window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+    } else {
+      toast.info("Entre em contato pelo WhatsApp para fazer seu pedido!");
+    }
+  };
+
+  // Cart Functions
+  const addToCart = (product: Product, quantity: number = 1) => {
+    setCartItems(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        return prev.map(item =>
+          item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: product.id,
+          code: product.code || product.id.slice(0, 6).toUpperCase(),
+          name: product.name,
+          price: product.price,
+          quantity,
+          image_url: product.image_url,
+        },
+      ];
+    });
+  };
+
+  const updateCartQuantity = (id: string, quantity: number) => {
+    if (quantity <= 0) {
+      setCartItems(prev => prev.filter(item => item.id !== id));
+    } else {
+      setCartItems(prev =>
+        prev.map(item => (item.id === id ? { ...item, quantity } : item))
+      );
+    }
+  };
+
+  const removeFromCart = (id: string) => {
+    setCartItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
+  const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Product Card Component with neon rotating border
+  const ProductCard = ({ product, index }: { product: Product; index: number }) => (
+    <div
+      className="group relative rounded-xl overflow-hidden transition-all hover:scale-[1.02] cursor-pointer"
+      style={{ animationDelay: `${index * 0.05}s` }}
+      onClick={() => setSelectedProduct(product)}
+    >
+      {/* Rotating neon border */}
+      <div
+        className="absolute -inset-[2px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        style={{
+          background: `conic-gradient(from var(--angle, 0deg), ${colors.buttons}, ${colors.accent}, #ec4899, ${colors.buttons})`,
+          animation: 'spin 3s linear infinite',
+        }}
+      />
+
+      {/* Inner card */}
+      <div
+        className="relative rounded-xl overflow-hidden"
+        style={{
+          backgroundColor: colors.card,
+          border: `1px solid ${colors.border}`,
+        }}
+      >
+        {product.image_url ? (
+          <div className="w-full aspect-square overflow-hidden" style={{ backgroundColor: colors.border }}>
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </div>
+        ) : (
+          <div
+            className="w-full aspect-square flex items-center justify-center"
+            style={{ backgroundColor: colors.border }}
+          >
+            <Package className="h-12 w-12" style={{ color: colors.muted }} />
+          </div>
+        )}
+
+        <div className="p-4">
+          {product.category && (
+            <span
+              className="text-xs px-2 py-0.5 rounded"
+              style={{ backgroundColor: colors.border, color: colors.muted }}
+            >
+              {product.category}
+            </span>
+          )}
+
+          <h3 className="font-semibold mt-2 mb-1 line-clamp-1">{product.name}</h3>
+
+          {product.description && (
+            <p className="text-sm mb-3 line-clamp-2" style={{ color: colors.muted }}>{product.description}</p>
+          )}
+
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-lg font-bold" style={{ color: colors.accent }}>{formatPrice(product.price)}</span>
+          </div>
+
+          {/* Two buttons: Add to cart & WhatsApp */}
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                addToCart(product, 1);
+                toast.success(`${product.name} adicionado!`);
+              }}
+              className="flex-1 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95"
+              style={{
+                background: `linear-gradient(135deg, ${colors.buttons}, ${colors.accent})`,
+                color: '#FFFFFF',
+                boxShadow: `0 4px 15px ${colors.buttons}40`,
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Carrinho
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyForWhatsApp(product);
+              }}
+              className="py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95"
+              style={{
+                backgroundColor: '#22C55E',
+                color: '#FFFFFF',
+              }}
+            >
+              <MessageCircle className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Simple loading spinner while fetching data
+  if (isLoading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center relative overflow-hidden"
+        style={{ backgroundColor: colors.background }}
+      >
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-[120px] animate-pulse" style={{ backgroundColor: colors.buttons + '30' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-[120px] animate-pulse" style={{ backgroundColor: colors.accent + '20', animationDelay: '1s' }} />
+
+        <div className="text-center relative z-10">
+          <div
+            className="w-16 h-16 border-4 rounded-full animate-spin mx-auto mb-4"
+            style={{
+              borderColor: colors.buttons + '30',
+              borderTopColor: colors.buttons
+            }}
+          />
+          <p style={{ color: colors.muted }}>Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Welcome screen after data is loaded
+  if (showWelcome && config) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center relative overflow-hidden"
+        style={{ backgroundColor: colors.background }}
+      >
+        {/* Animated background orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-[120px] animate-pulse" style={{ backgroundColor: colors.buttons + '30' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-[120px] animate-pulse" style={{ backgroundColor: colors.accent + '20', animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[200px] animate-pulse" style={{ backgroundColor: colors.buttons + '10', animationDelay: '0.5s' }} />
+
+        {/* Floating particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-2 h-2 rounded-full animate-bounce"
+              style={{
+                backgroundColor: colors.buttons,
+                opacity: 0.3 + Math.random() * 0.4,
+                left: `${10 + Math.random() * 80}%`,
+                top: `${10 + Math.random() * 80}%`,
+                animationDelay: `${i * 0.2}s`,
+                animationDuration: `${2 + Math.random() * 2}s`
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="text-center relative z-10 px-6">
+          {/* Waving Robot */}
+          <div className="relative mb-8">
+            <div
+              className="w-32 h-32 mx-auto relative"
+              style={{ animation: 'float 3s ease-in-out infinite' }}
+            >
+              {/* Robot body */}
+              <div
+                className="absolute inset-0 rounded-3xl flex items-center justify-center overflow-hidden"
+                style={{
+                  backgroundColor: colors.buttons + '20',
+                  boxShadow: `0 0 60px ${colors.buttons}40, inset 0 0 30px ${colors.buttons}10`,
+                  border: `2px solid ${colors.buttons}50`
+                }}
+              >
+                {/* Robot face */}
+                <div className="text-center">
+                  {/* Eyes */}
+                  <div className="flex justify-center gap-4 mb-2">
+                    <div
+                      className="w-4 h-4 rounded-full animate-pulse"
+                      style={{ backgroundColor: colors.buttons, boxShadow: `0 0 10px ${colors.buttons}` }}
+                    />
+                    <div
+                      className="w-4 h-4 rounded-full animate-pulse"
+                      style={{ backgroundColor: colors.buttons, boxShadow: `0 0 10px ${colors.buttons}`, animationDelay: '0.1s' }}
+                    />
+                  </div>
+                  {/* Smile */}
+                  <div
+                    className="w-8 h-4 mx-auto rounded-b-full"
+                    style={{ border: `2px solid ${colors.buttons}`, borderTop: 'none' }}
+                  />
+                </div>
+              </div>
+
+              {/* Waving hand */}
+              <div
+                className="absolute -right-6 top-1/2 -translate-y-1/2"
+                style={{ animation: 'wave 1s ease-in-out infinite' }}
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl"
+                  style={{
+                    backgroundColor: colors.buttons + '30',
+                    border: `2px solid ${colors.buttons}50`
+                  }}
+                >
+                  👋
+                </div>
+              </div>
+
+              {/* Glow ring */}
+              <div
+                className="absolute -inset-4 rounded-full"
+                style={{
+                  border: `2px solid ${colors.buttons}30`,
+                  animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Welcome text with animation */}
+          <div className="space-y-3">
+            <p
+              className="text-sm uppercase tracking-[0.3em] font-medium animate-fade-in"
+              style={{ color: colors.muted, animationDelay: '0.2s' }}
+            >
+              Seja bem-vindo à
+            </p>
+            <h1
+              className="text-4xl md:text-5xl font-bold animate-fade-in"
+              style={{
+                color: colors.text,
+                animationDelay: '0.4s',
+                animationFillMode: 'both',
+                textShadow: `0 0 40px ${colors.buttons}30`
+              }}
+            >
+              {config.name || 'Nossa Loja'}
+            </h1>
+            <div
+              className="flex items-center justify-center gap-2 animate-fade-in"
+              style={{ animationDelay: '0.6s' }}
+            >
+              <div
+                className="w-2 h-2 rounded-full animate-bounce"
+                style={{ backgroundColor: colors.buttons, animationDelay: '0s' }}
+              />
+              <div
+                className="w-2 h-2 rounded-full animate-bounce"
+                style={{ backgroundColor: colors.buttons, animationDelay: '0.1s' }}
+              />
+              <div
+                className="w-2 h-2 rounded-full animate-bounce"
+                style={{ backgroundColor: colors.buttons, animationDelay: '0.2s' }}
+              />
+            </div>
+            <p
+              className="text-sm animate-fade-in"
+              style={{ color: colors.muted, animationDelay: '0.8s' }}
+            >
+              Preparando tudo para você...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+        style={{ backgroundColor: colors.background }}
+      >
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-[120px]" style={{ backgroundColor: '#EF444420' }} />
+
+        <div className="text-center max-w-md relative z-10">
+          <div
+            className="w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-6"
+            style={{ backgroundColor: '#EF444420' }}
+          >
+            <Store className="h-12 w-12 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold mb-3" style={{ color: colors.text }}>Vitrine não encontrada</h1>
+          <p style={{ color: colors.muted }}>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen relative overflow-hidden" style={{ backgroundColor: colors.background, color: colors.text }}>
+      {/* Animated Background Orbs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute top-0 left-1/4 w-[500px] h-[500px] rounded-full blur-[150px] animate-pulse"
+          style={{ backgroundColor: colors.buttons + '15' }}
+        />
+        <div
+          className="absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full blur-[120px] animate-pulse"
+          style={{ backgroundColor: colors.accent + '10', animationDelay: '2s' }}
+        />
+        <div
+          className="absolute top-1/2 left-1/2 w-[300px] h-[300px] rounded-full blur-[100px] animate-pulse"
+          style={{ backgroundColor: colors.buttons + '08', animationDelay: '4s' }}
+        />
+      </div>
+
+      {/* Header / Banner */}
+      <header className="relative z-10 border-b" style={{ borderColor: colors.border + '50' }}>
+        {config?.banner && (
+          <div className="w-full h-40 md:h-56 overflow-hidden relative">
+            <img
+              src={config.banner}
+              alt="Banner"
+              className="w-full h-full object-cover"
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(to bottom, transparent 50%, ${colors.background} 100%)`
+              }}
+            />
+          </div>
+        )}
+
+        <div
+          className="p-4 md:p-6 backdrop-blur-sm"
+          style={{ backgroundColor: colors.background + 'dd' }}
+        >
+          <div className="max-w-6xl mx-auto">
+            {/* Store Info */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center relative"
+                  style={{
+                    background: `linear-gradient(135deg, ${colors.buttons}30 0%, ${colors.accent}30 100%)`,
+                    border: `1px solid ${colors.buttons}40`,
+                    boxShadow: `0 0 30px ${colors.buttons}20`
+                  }}
+                >
+                  <Store className="h-7 w-7" style={{ color: colors.buttons }} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl md:text-3xl font-bold">{config?.name || 'Vitrine'}</h1>
+                    <Sparkles className="w-5 h-5 animate-pulse" style={{ color: colors.accent }} />
+                  </div>
+                  <p className="text-sm" style={{ color: colors.muted }}>{products.length} produto(s)</p>
+                </div>
+              </div>
+
+              <Button
+                onClick={openWhatsApp}
+                className="text-white shadow-lg transition-all duration-300 hover:scale-105"
+                style={{
+                  backgroundColor: '#22C55E',
+                  boxShadow: '0 4px 20px rgba(34, 197, 94, 0.3)'
+                }}
+              >
+                <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
+              </Button>
+            </div>
+
+            {/* Announcements */}
+            {announcements.length > 0 && (
+              <div
+                className="relative rounded-2xl px-4 py-3 mb-5 overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, ${colors.buttons}15 0%, ${colors.accent}15 100%)`,
+                  border: `1px solid ${colors.buttons}30`
+                }}
+              >
+                <div className="flex items-center justify-between relative z-10">
+                  {announcements.length > 1 && (
+                    <button
+                      onClick={() => setCurrentAnnouncement(prev => (prev - 1 + announcements.length) % announcements.length)}
+                      className="p-1.5 rounded-full transition-all hover:scale-110"
+                      style={{ backgroundColor: colors.buttons + '20' }}
+                    >
+                      <ChevronLeft className="h-4 w-4" style={{ color: colors.buttons }} />
+                    </button>
+                  )}
+                  <p className="text-center flex-1 font-medium" style={{ color: colors.accent }}>
+                    {announcements[currentAnnouncement]}
+                  </p>
+                  {announcements.length > 1 && (
+                    <button
+                      onClick={() => setCurrentAnnouncement(prev => (prev + 1) % announcements.length)}
+                      className="p-1.5 rounded-full transition-all hover:scale-110"
+                      style={{ backgroundColor: colors.buttons + '20' }}
+                    >
+                      <ChevronRight className="h-4 w-4" style={{ color: colors.buttons }} />
+                    </button>
+                  )}
+                </div>
+                {announcements.length > 1 && (
+                  <div className="flex justify-center gap-1.5 mt-2">
+                    {announcements.map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 rounded-full transition-all duration-300"
+                        style={{
+                          backgroundColor: i === currentAnnouncement ? colors.buttons : colors.buttons + '30',
+                          transform: i === currentAnnouncement ? 'scale(1.2)' : 'scale(1)'
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Search */}
+            <div className="relative mb-5">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: colors.muted }} />
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-11 h-12 rounded-xl border-2 transition-all duration-300 focus:scale-[1.01]"
+                style={{
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  color: colors.text
+                }}
+                placeholder="Buscar produtos..."
+              />
+            </div>
+
+            {/* Categories - Infinite Scroll Animation */}
+            {categories.length > 0 && (
+              <div className="relative overflow-hidden">
+                {/* Fade edges */}
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-12 z-10 pointer-events-none"
+                  style={{ background: `linear-gradient(to right, ${colors.background}, transparent)` }}
+                />
+                <div
+                  className="absolute right-0 top-0 bottom-0 w-12 z-10 pointer-events-none"
+                  style={{ background: `linear-gradient(to left, ${colors.background}, transparent)` }}
+                />
+
+                <div
+                  className="flex gap-6 pb-2"
+                  style={{
+                    animation: `scroll-categories ${Math.max(categories.length * 3, 15)}s linear infinite`,
+                    width: 'max-content'
+                  }}
+                >
+                  {/* Duplicate categories for seamless loop */}
+                  {[...categories, ...categories].map((cat, idx) => (
+                    <button
+                      key={`${cat.id}-${idx}`}
+                      onClick={() => setSelectedCategory(cat)}
+                      className="flex flex-col items-center gap-1 min-w-[70px] group"
+                    >
+                      <div
+                        className="w-16 h-16 rounded-full overflow-hidden transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg"
+                        style={{
+                          border: `2px solid ${colors.border}`,
+                          backgroundColor: colors.card,
+                          boxShadow: `0 0 0 0 ${colors.buttons}00`
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = `0 0 20px ${colors.buttons}50`;
+                          e.currentTarget.style.borderColor = colors.buttons;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = `0 0 0 0 ${colors.buttons}00`;
+                          e.currentTarget.style.borderColor = colors.border;
+                        }}
+                      >
+                        {cat.image_url ? (
+                          <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-lg font-bold" style={{ color: colors.muted }}>{cat.name.charAt(0)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-xs truncate max-w-[70px] transition-colors" style={{ color: colors.muted }}>{cat.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Products Grid */}
+      <main className="relative z-10 max-w-6xl mx-auto p-4 md:p-6">
+        {filteredProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div
+              className="w-24 h-24 rounded-2xl flex items-center justify-center mb-6"
+              style={{
+                background: `linear-gradient(135deg, ${colors.buttons}20 0%, ${colors.accent}20 100%)`,
+                boxShadow: `0 0 40px ${colors.buttons}10`
+              }}
+            >
+              <Package className="h-12 w-12" style={{ color: colors.buttons }} />
+            </div>
+            <h3 className="text-2xl font-semibold mb-2" style={{ color: colors.text }}>
+              {searchQuery ? 'Nenhum produto encontrado' : products.length === 0 ? 'Nenhum produto cadastrado' : 'Nenhum produto nesta categoria'}
+            </h3>
+            <p style={{ color: colors.muted }}>
+              {searchQuery ? 'Tente outra busca' : products.length === 0 ? 'Em breve novos produtos!' : 'Selecione outra categoria'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {filteredProducts.map((product, index) => (
+              <ProductCard key={product.id} product={product} index={index} />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer
+        className="relative z-10 border-t mt-16 py-10"
+        style={{ borderColor: colors.border + '50' }}
+      >
+        <div className="max-w-6xl mx-auto px-4 text-center">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: colors.buttons + '20' }}
+            >
+              <Store className="h-5 w-5" style={{ color: colors.buttons }} />
+            </div>
+            <span className="font-semibold text-lg">{config?.name || 'Vitrine'}</span>
+          </div>
+
+          {(config?.companyName || config?.cnpj) && (
+            <p className="text-sm mb-3" style={{ color: colors.muted }}>
+              {config.companyName}{config.companyName && config.cnpj && ' • '}{config.cnpj}
+            </p>
+          )}
+
+          <p className="text-sm" style={{ color: colors.muted }}>
+            Envie o código do produto pelo WhatsApp para fazer seu pedido
+          </p>
+          <p className="text-xs mt-4 opacity-50" style={{ color: colors.muted }}>
+            Powered by ISA 2.5
+          </p>
+        </div>
+      </footer>
+
+      {/* Floating Cart Button */}
+      <button
+        onClick={() => setShowCart(true)}
+        className="fixed bottom-6 left-6 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 z-50 group"
+        style={{
+          backgroundColor: colors.buttons,
+          boxShadow: `0 8px 30px ${colors.buttons}60`
+        }}
+      >
+        <ShoppingBag className="h-7 w-7 text-white" />
+        {cartItemCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+            {cartItemCount}
+          </span>
+        )}
+      </button>
+
+      {/* Floating WhatsApp Button */}
+      <button
+        onClick={() => setShowChatHelp(true)}
+        className="fixed bottom-6 right-6 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 z-50 group"
+        style={{
+          backgroundColor: '#22C55E',
+          boxShadow: '0 8px 30px rgba(34, 197, 94, 0.4)'
+        }}
+      >
+        <MessageCircle className="h-7 w-7 text-white transition-transform duration-300 group-hover:scale-110" />
+        <span className="absolute w-full h-full rounded-full animate-ping opacity-30" style={{ backgroundColor: '#22C55E' }} />
+      </button>
+
+      {/* Chat Help Modal */}
+      {showChatHelp && (
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div
+            className="w-full max-w-md h-[600px] sm:h-[700px] rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col"
+            style={{ backgroundColor: colors.card }}
+          >
+            {/* Chat Header */}
+            <div
+              className="flex items-center gap-3 p-5 shrink-0"
+              style={{ backgroundColor: 'colors.buttons' }}
+            >
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                <Store className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-white text-lg">{config?.name || 'Assistente Virtual'}</h3>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  <p className="text-sm text-white/80">Online agora</p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleCloseChat()}
+                className="p-2 rounded-full hover:bg-white/20 transition-colors"
+              >
+                <X className="h-5 w-5 text-white" />
+              </button>
+            </div>
+
+            {/* Chat Messages */}
+            <div
+              className="flex-1 p-5 space-y-4 overflow-y-auto"
+              style={{ backgroundColor: colors.background }}
+            >
+              {chatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {message.role === 'assistant' && (
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: colors.buttons }}
+                    >
+                      <Store className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === 'user'
+                        ? 'rounded-br-sm'
+                        : 'rounded-tl-sm'
+                      }`}
+                    style={{
+                      backgroundColor: message.role === 'user' ? colors.buttons : colors.card,
+                      border: message.role === 'assistant' ? `1px solid ${colors.border}` : 'none',
+                      color: message.role === 'user' ? '#FFFFFF' : colors.text
+                    }}
+                  >
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <span className="text-xs opacity-60 mt-1 block">
+                      {message.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+
+                  {message.role === 'user' && (
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: colors.border }}
+                    >
+                      <User className="h-4 w-4" style={{ color: colors.muted }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {isSendingMessage && (
+                <div className="flex gap-3 justify-start">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: colors.buttons }}
+                  >
+                    <Store className="h-4 w-4 text-white animate-pulse" />
+                  </div>
+                  <div
+                    className="rounded-2xl rounded-tl-sm px-4 py-3"
+                    style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}` }}
+                  >
+                    <div className="flex gap-1 items-center">
+                      <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: colors.muted }} />
+                      <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: colors.muted, animationDelay: '0.1s' }} />
+                      <span className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: colors.muted, animationDelay: '0.2s' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+              {/* Chat Input */}
+              <div
+                className="p-5 border-t shrink-0"
+                style={{ borderColor: colors.border, backgroundColor: colors.card }}
+              >
+                <div className="flex gap-3">
+                  <Input
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChatMessage()}
+                    placeholder="Digite sua mensagem..."
+                    className="flex-1"
+                    style={{
+                      backgroundColor: colors.background,
+                      borderColor: colors.border,
+                      color: colors.text
+                    }}
+                    disabled={isSendingMessage}
+                  />
+                  <Button
+                    onClick={handleSendChatMessage}
+                    disabled={isSendingMessage || !chatInput.trim()}
+                    className="px-4 text-white"
+                    style={{ backgroundColor: colors.buttons }}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                  <p className="text-xs" style={{ color: colors.muted }}>
+                    Powered by ISA AI
+                  </p>
+                  <button
+                    onClick={openWhatsApp}
+                    className="text-xs hover:underline flex items-center gap-1"
+                    style={{ color: colors.accent }}
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    Ir para WhatsApp
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Page Modal */}
+      {selectedCategory && (
+        <div
+          className="fixed inset-0 z-[100] overflow-y-auto"
+          style={{ backgroundColor: colors.background }}
+        >
+          {/* Animated Background in Category */}
+          <div className="fixed inset-0 pointer-events-none overflow-hidden">
+            <div
+              className="absolute top-0 right-1/4 w-[400px] h-[400px] rounded-full blur-[120px] animate-pulse"
+              style={{ backgroundColor: colors.buttons + '15' }}
+            />
+            <div
+              className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] rounded-full blur-[100px] animate-pulse"
+              style={{ backgroundColor: colors.accent + '10', animationDelay: '2s' }}
+            />
+          </div>
+
+          {/* Category Header */}
+          <header
+            className="sticky top-0 z-10 border-b backdrop-blur-md"
+            style={{ backgroundColor: colors.background + 'ee', borderColor: colors.border + '50' }}
+          >
+            <div className="max-w-6xl mx-auto p-4">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className="p-2.5 rounded-xl transition-all duration-300 hover:scale-110"
+                  style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}` }}
+                >
+                  <ArrowLeft className="h-5 w-5" style={{ color: colors.text }} />
+                </button>
+
+                <div className="flex items-center gap-4 flex-1">
+                  <div
+                    className="w-14 h-14 rounded-full overflow-hidden"
+                    style={{
+                      border: `3px solid ${colors.buttons}`,
+                      boxShadow: `0 0 20px ${colors.buttons}30`
+                    }}
+                  >
+                    {selectedCategory.image_url ? (
+                      <img src={selectedCategory.image_url} alt={selectedCategory.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ background: `linear-gradient(135deg, ${colors.buttons}30 0%, ${colors.accent}30 100%)` }}
+                      >
+                        <ShoppingBag className="w-6 h-6" style={{ color: colors.buttons }} />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold" style={{ color: colors.text }}>{selectedCategory.name}</h1>
+                    <p className="text-sm" style={{ color: colors.muted }}>{categoryProducts.length} produto(s)</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className="p-2.5 rounded-xl transition-all duration-300 hover:scale-110"
+                  style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}` }}
+                >
+                  <X className="h-5 w-5" style={{ color: colors.muted }} />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* Category Products */}
+          <main className="relative z-10 max-w-6xl mx-auto p-4 md:p-6">
+            {categoryProducts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div
+                  className="w-24 h-24 rounded-2xl flex items-center justify-center mb-6"
+                  style={{
+                    background: `linear-gradient(135deg, ${colors.buttons}20 0%, ${colors.accent}20 100%)`
+                  }}
+                >
+                  <Package className="h-12 w-12" style={{ color: colors.buttons }} />
+                </div>
+                <h3 className="text-2xl font-semibold mb-3" style={{ color: colors.text }}>
+                  Nenhum produto nesta categoria
+                </h3>
+                <Button
+                  onClick={() => setSelectedCategory(null)}
+                  className="mt-4"
+                  style={{ backgroundColor: colors.buttons, color: '#fff' }}
+                >
+                  Voltar para todos os produtos
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                {categoryProducts.map((product, index) => (
+                  <ProductCard key={product.id} product={product} index={index} />
+                ))}
+              </div>
+            )}
+          </main>
+
+          {/* Floating WhatsApp Button in category view */}
+          <button
+            onClick={() => setShowChatHelp(true)}
+            className="fixed bottom-6 right-6 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 group"
+            style={{
+              backgroundColor: '#22C55E',
+              boxShadow: '0 8px 30px rgba(34, 197, 94, 0.4)'
+            }}
+          >
+            <MessageCircle className="h-7 w-7 text-white" />
+            <span className="absolute w-full h-full rounded-full animate-ping opacity-30" style={{ backgroundColor: '#22C55E' }} />
+          </button>
+        </div>
+      )}
+
+      {/* WhatsApp Copy Success Dialog */}
+      {showWhatsAppCopyDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+          <div 
+            className="relative max-w-sm w-full rounded-2xl p-6 text-center animate-in fade-in zoom-in duration-300"
+            style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}` }}
+          >
+            <button
+              onClick={() => setShowWhatsAppCopyDialog(false)}
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors"
+            >
+              <X className="h-5 w-5" style={{ color: colors.muted }} />
+            </button>
+
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ background: `linear-gradient(135deg, ${colors.buttons}30, ${colors.accent}30)` }}
+            >
+              <MessageCircle className="h-8 w-8" style={{ color: colors.buttons }} />
+            </div>
+
+            <h3 className="text-xl font-bold mb-2" style={{ color: colors.text }}>
+              Mensagem Copiada! 🎉
+            </h3>
+
+            <p className="text-sm mb-2" style={{ color: colors.muted }}>
+              Produto: <span style={{ color: colors.accent }} className="font-medium">{copiedProductName}</span>
+            </p>
+
+            <div className="py-4 space-y-3">
+              <p className="text-sm" style={{ color: colors.text }}>
+                Cole a mensagem diretamente no WhatsApp para tirar todas as dúvidas sobre esse produto!
+              </p>
+              <div 
+                className="rounded-lg p-3 text-left"
+                style={{ backgroundColor: colors.border + '50' }}
+              >
+                <p className="text-xs mb-1" style={{ color: colors.muted }}>A ISA vai responder com:</p>
+                <ul className="text-xs space-y-1" style={{ color: colors.muted }}>
+                  <li>✓ Nome e preço do produto</li>
+                  <li>✓ Descrição completa</li>
+                  <li>✓ Instruções personalizadas</li>
+                </ul>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowWhatsAppCopyDialog(false)}
+              className="w-full py-3 rounded-lg font-medium transition-all hover:scale-[1.02] active:scale-95"
+              style={{
+                background: `linear-gradient(135deg, ${colors.buttons}, ${colors.accent})`,
+                color: '#FFFFFF',
+              }}
+            >
+              Entendi!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confetti */}
+      <VitrineConfetti active={showConfetti} />
+
+      {/* Shopping Cart Modal */}
+      {showCart && (
+        <ShoppingCart
+          items={cartItems}
+          onUpdateQuantity={updateCartQuantity}
+          onRemoveItem={removeFromCart}
+          onClearCart={clearCart}
+          colors={colors}
+          matricula={matricula || cpf || ""}
+          onClose={() => setShowCart(false)}
+        />
+      )}
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <ProductModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={addToCart}
+          onWhatsApp={() => handleProductWhatsApp(selectedProduct)}
+          colors={colors}
+        />
+      )}
+
+      {/* WhatsApp Contact Modal */}
+      {whatsAppContactProduct && (
+        <WhatsAppContactModal
+          product={whatsAppContactProduct}
+          onClose={() => setWhatsAppContactProduct(null)}
+          matricula={matricula || cpf || ""}
+          storeName={config?.name || "Nossa Loja"}
+          colors={colors}
+        />
+      )}
+    </div>
+  );
+};
+
+// Helper function to adjust color brightness
+function adjustBrightness(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = (num >> 16) + amt;
+  const G = (num >> 8 & 0x00FF) + amt;
+  const B = (num & 0x0000FF) + amt;
+  return '#' + (
+    0x1000000 +
+    (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+    (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+    (B < 255 ? B < 1 ? 0 : B : 255)
+  ).toString(16).slice(1);
+}
+
+export default Vitrine;

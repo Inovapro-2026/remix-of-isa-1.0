@@ -1,0 +1,14 @@
+services:
+  waha:
+    image: devlikeapro/waha
+    container_name: waha
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - WHATSAPP_HOOK_URL=http://host.docker.internal:3001/api/waha/webhook
+      - WHATSAPP_HOOK_EVENTS=message,session.status
+    volumes:
+      - ./waha_data:/app/.wwebjs_auth
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

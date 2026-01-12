@@ -1,0 +1,4 @@
+# This edge function is public (no JWT verification required)
+# It acts as a proxy to the WhatsApp backend VPS
+[function]
+verify_jwt = false

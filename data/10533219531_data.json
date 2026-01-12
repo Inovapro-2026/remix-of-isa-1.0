@@ -1,0 +1,458 @@
+{
+  "contacts": [
+    {
+      "id": "5511978197645@c.us",
+      "name": "Maicon Silva",
+      "phone_number": "5511978197645@c.us",
+      "last_message": "PROD-test-pro",
+      "last_message_time": 1767184340,
+      "unread_count": 27,
+      "profile_pic_url": "https://pps.whatsapp.net/v/t61.24694-24/597167177_1178630987693283_4653511235573122643_n.jpg?ccb=11-4&oh=01_Q5Aa3QH67tI6_hcumvYtk48c2D8oGFDtbuj1Z_N87QNbPCdnMA&oe=696201BC&_nc_sid=5e03e0&_nc_cat=102"
+    }
+  ],
+  "messages": [
+    {
+      "id": "false_5511978197645@c.us_AC07F3287E48EDDFF1A0DC2794A7F6FF",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T11:08:07.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "false_5511978197645@c.us_ACD9515C6A6CC2A9489E2CD2D02D4155",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T11:16:22.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "false_5511978197645@c.us_ACFA93166521E56439C722186EA4E212",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T11:19:31.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767179978169",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá! Eu sou a ISA, o assistente virtual da empresa. Como posso ajudá-lo hoje? Sinta-se à vontade para me perguntar sobre nossos produtos, serviços ou políticas.",
+      "timestamp": "2025-12-31T11:19:38.169Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC56CC0A68F5EE4FF3223FBBDFBB88E4",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Quais os produtos que você tem",
+      "timestamp": "2025-12-31T11:19:50.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767179997118",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Infelizmente não tenho informações detalhadas sobre os produtos disponíveis neste momento. Como assistente virtual, eu ainda não tenho acesso ao catálogo completo da empresa.\n\nNo entanto, posso te direcionar para a nossa vitrine online, onde você poderá ver todos os produtos e serviços que temos. Acesse a vitrine através deste link: [link da vitrine personalizada].\n\nLá você encontrará informações completas sobre os itens, como descrição, preços e imagens. Se tiver alguma dúvida específica sobre algum produto, fique à vontade para me perguntar e eu verei o que posso te informar.\n\nCaso precise de ajuda adicional, ficarei feliz em encaminhar sua solicitação para um atendente humano. Apenas me informe que deseja falar com alguém.",
+      "timestamp": "2025-12-31T11:19:57.118Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC7D0B0754DA36975C922A44AF143354",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T11:34:27.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767180874158",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá! Bem-vindo(a) à ISA, o assistente virtual da [Nome da Empresa]. Como posso ajudá-lo(a) hoje?",
+      "timestamp": "2025-12-31T11:34:34.158Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC56C7A7BE2B7CE13F80C0D24C3C87F9",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Quais os produtos você tem",
+      "timestamp": "2025-12-31T11:34:36.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767180882669",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá! Ainda não tenho informações sobre produtos cadastrados nesta empresa. Mas você pode dar uma olhada na nossa vitrine online, lá você encontrará todos os nossos produtos disponíveis. \n\nAcesse a vitrine clicando neste link: [LINK DA VITRINE]\n\nCaso tenha alguma outra dúvida, fico à disposição. Estou aqui para ajudar no que for possível.",
+      "timestamp": "2025-12-31T11:34:42.669Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC58D6EF2143CC937328F47B58F8C8E6",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Me mande o link da vitrine",
+      "timestamp": "2025-12-31T11:40:00.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "false_5511978197645@c.us_ACE1A1A5893A336961BAFEFF0209AC81",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T11:40:42.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767181249142",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá, tudo bem? Sou a ISA, o assistente virtual da empresa. Como posso te ajudar hoje?",
+      "timestamp": "2025-12-31T11:40:49.142Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC7EFC0C062454A0160961CC6B73C5C1",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Me mande o link da vitrine",
+      "timestamp": "2025-12-31T11:40:58.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767181271224",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "🛒 Acesse nossa vitrine virtual para ver todos os produtos:\nhttps://isa-lovable.com/vitrine/10533219531",
+      "timestamp": "2025-12-31T11:41:11.224Z",
+      "sender": "ai"
+    },
+    {
+      "id": "sent_1767181271233",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "🛒 Acesse nossa vitrine virtual para ver todos os produtos:\nhttps://isa-lovable.com/vitrine/10533219531",
+      "timestamp": "2025-12-31T11:41:11.233Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC391A6D888CD2679919E03EA59C9AD9",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Me mande o link da vitrine",
+      "timestamp": "2025-12-31T11:44:36.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "false_5511978197645@c.us_ACC3A4A3F48618C6AF47843976180B96",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T11:45:00.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767181508535",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá! Bem-vindo(a) à Assistente Virtual da Lovable. Como posso ajudá-lo(a) hoje?",
+      "timestamp": "2025-12-31T11:45:08.535Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC070D4AC6D6F311715C2E3423AD6A41",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Me mande o link da vitrine",
+      "timestamp": "2025-12-31T11:45:11.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767181546513",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "🛒 Acesse nossa vitrine virtual para ver todos os produtos:\nhttps://isa-lovable.com/vitrine/10533219531",
+      "timestamp": "2025-12-31T11:45:46.513Z",
+      "sender": "ai"
+    },
+    {
+      "id": "sent_1767181546665",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "🛒 Acesse nossa vitrine virtual para ver todos os produtos:\nhttps://isa-lovable.com/vitrine/10533219531",
+      "timestamp": "2025-12-31T11:45:46.665Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC285BB8AB6FB337F5794CF2A0C0D99E",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T11:47:17.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767181642670",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá! Eu sou a ISA, a assistente virtual da [NOME DA EMPRESA]. Como posso ajudá-lo(a) hoje?",
+      "timestamp": "2025-12-31T11:47:22.670Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_ACEE16AD70B71AF93F49E8C3801194BF",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Quem criou você",
+      "timestamp": "2025-12-31T11:47:36.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767181662666",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá! Eu fui criada pela InovaPro Technology, uma empresa especializada em soluções de automação e inteligência artificial. O projeto no qual eu estou inserida é chamado de ISA (Inteligência de Suporte Automatizado) e foi desenvolvido sob a supervisão do Maicon Silva, que é o dono do projeto.\n\nA minha função é atuar como um assistente virtual para auxiliar os clientes da empresa no atendimento pelo WhatsApp Business. Eu fui treinada para ser profissional, amigável e eficiente nas respostas, sempre buscando direcionar os clientes da melhor forma possível.\n\nEspero poder ser útil durante nosso diálogo! Se tiver qualquer outra dúvida, fique à vontade para perguntar.",
+      "timestamp": "2025-12-31T11:47:42.666Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC753223E3A9A0D876FE89B473192B47",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Me mande o link da vitrine",
+      "timestamp": "2025-12-31T11:47:53.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "false_5511978197645@c.us_ACF25F3C28E466F276B1A910EF84C447",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T11:49:00.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767181742318",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "🛒 Acesse nossa vitrine virtual para ver todos os produtos:\nhttps://isa-lovable.com/vitrine/10533219531",
+      "timestamp": "2025-12-31T11:49:02.318Z",
+      "sender": "ai"
+    },
+    {
+      "id": "sent_1767181745906",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá! Bem-vindo(a) à nossa assistência virtual. Sou a ISA, a Inteligência de Suporte Automatizado da empresa. Como posso te ajudar hoje?",
+      "timestamp": "2025-12-31T11:49:05.906Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC573EFF46E45B12A91836E0D5FABD2E",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Quais o produtos você tem",
+      "timestamp": "2025-12-31T11:49:31.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767181777985",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá, ainda não tenho informações sobre os produtos disponíveis. Porém, você pode verificar nossa vitrine online clicando neste link: \n\nhttps://isa-lovable.com/vitrine/10533219531\n\nLá você encontrará todos os itens que temos no momento. Caso precise de mais informações ou tenha alguma outra dúvida, ficarei feliz em te ajudar ou em encaminhar você para um atendente humano. Basta me informar o que você precisa.",
+      "timestamp": "2025-12-31T11:49:37.985Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC03DA62D83B2689EAB6CC471A4841B9",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T11:59:17.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767182363557",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá, bom dia! Eu sou a Assistente virtual da empresa. Em que posso ajudá-lo(a) hoje?",
+      "timestamp": "2025-12-31T11:59:23.557Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC5D423C64091903730188BC444EDBDA",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Pode me mandar o link da vitrine",
+      "timestamp": "2025-12-31T11:59:41.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC564CB42C44C7E2286133BA8F61B529",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T12:00:12.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767182418656",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá! Seja bem-vindo(a). Sou a Assistente, o serviço de atendimento virtual da empresa. Como posso ajudar você hoje?",
+      "timestamp": "2025-12-31T12:00:18.656Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC718A5F2969E2F16E708C6C2157913C",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Pode me mandar o link da vitrine",
+      "timestamp": "2025-12-31T12:00:28.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767182450757",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "🛒 Acesse nossa vitrine virtual para ver todos os produtos:\nhttps://isa-lovable.com/vitrine/10533219531",
+      "timestamp": "2025-12-31T12:00:50.757Z",
+      "sender": "ai"
+    },
+    {
+      "id": "sent_1767182450918",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "🛒 Acesse nossa vitrine virtual para ver todos os produtos:\nhttps://isa-lovable.com/vitrine/10533219531",
+      "timestamp": "2025-12-31T12:00:50.918Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC1DC353620DF9B38B3A60D8BC9AF504",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Oi",
+      "timestamp": "2025-12-31T12:02:51.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767182577002",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Olá, tudo bem? Eu sou a Assistente, um assistente virtual da empresa [Nome da Empresa]. Como posso te ajudar hoje?",
+      "timestamp": "2025-12-31T12:02:57.002Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_ACD646616D89169F5D1A4CE91824B7D2",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "Me mande o link da vitrine",
+      "timestamp": "2025-12-31T12:03:10.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767182599070",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "🛒 Acesse nossa vitrine virtual para ver todos os produtos:\nhttps://isa.inovapro.cloud/vitrine/10533219531",
+      "timestamp": "2025-12-31T12:03:19.070Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC9D6CE176F2E87309AEBF43FBDCC885",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "PROD-53594d42",
+      "timestamp": "2025-12-31T12:03:37.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767182622000",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Produto com este código não encontrado.",
+      "timestamp": "2025-12-31T12:03:42.000Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_ACF11AA9D3525EE4CDB7DEFC4714F9F5",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "PROD-53594d42",
+      "timestamp": "2025-12-31T12:05:31.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767182735681",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Produto com este código não encontrado.",
+      "timestamp": "2025-12-31T12:05:35.681Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_AC13D70F48C569B05E59EEB962909199",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "PROD-53594d42",
+      "timestamp": "2025-12-31T12:07:40.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767182864375",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Produto com este código não encontrado.",
+      "timestamp": "2025-12-31T12:07:44.375Z",
+      "sender": "ai"
+    },
+    {
+      "id": "false_5511978197645@c.us_ACE0D63E06EDD8E15A80DD3FCE0233FA",
+      "from": "5511978197645@c.us",
+      "to": "me",
+      "content": "PROD-test-pro",
+      "timestamp": "2025-12-31T12:32:20.000Z",
+      "sender": "other",
+      "senderName": "Maicon Silva"
+    },
+    {
+      "id": "sent_1767184344443",
+      "from": "me",
+      "to": "5511978197645@c.us",
+      "content": "Produto com este código não encontrado.",
+      "timestamp": "2025-12-31T12:32:24.444Z",
+      "sender": "ai"
+    }
+  ]
+}

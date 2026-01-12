@@ -1,0 +1,515 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// OpenRouter models with fallback order
+const OPENROUTER_MODELS = [
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
+  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o' },
+  { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
+  { id: 'meta-llama/llama-3.1-8b-instruct', name: 'Llama 3.1 8B' },
+];
+
+// Create Supabase client
+function getSupabaseClient() {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase credentials not configured');
+  }
+
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+// Get matricula and user_id from CPF or Matricula identifier
+async function getUserInfoFromIdentifier(identifier: string): Promise<{ userId: string | null; matricula: string | null }> {
+  const supabase = getSupabaseClient();
+  const cleanIdentifier = identifier.replace(/\D/g, '');
+  
+  // Try clients table first (CPF or Matricula)
+  const { data: client } = await supabase
+    .from('clients')
+    .select('user_id, matricula')
+    .or(`cpf.eq.${identifier},cpf.eq.${cleanIdentifier},matricula.eq.${identifier},matricula.eq.${cleanIdentifier}`)
+    .maybeSingle();
+  
+  if (client?.matricula) {
+    return { userId: client.user_id, matricula: client.matricula };
+  }
+  
+  // Try profiles table (CPF or Matricula)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, matricula')
+    .or(`cpf.eq.${identifier},cpf.eq.${cleanIdentifier},matricula.eq.${identifier},matricula.eq.${cleanIdentifier}`)
+    .maybeSingle();
+  
+  if (profile?.matricula) {
+    return { userId: profile.id, matricula: profile.matricula };
+  }
+
+  // Try admins table (CPF or Matricula)
+  const { data: admin } = await supabase
+    .from('admins')
+    .select('user_id, matricula')
+    .or(`cpf.eq.${identifier},cpf.eq.${cleanIdentifier},matricula.eq.${identifier},matricula.eq.${cleanIdentifier}`)
+    .maybeSingle();
+  
+  if (admin?.matricula) {
+    return { userId: admin.user_id, matricula: admin.matricula };
+  }
+
+  return { userId: null, matricula: null };
+}
+
+// Legacy function for compatibility - returns just userId
+async function getUserIdFromIdentifier(identifier: string): Promise<string | null> {
+  const { userId } = await getUserInfoFromIdentifier(identifier);
+  return userId;
+}
+
+// Get all products for a user by matricula OR user_id (fallback for legacy data)
+async function getAllUserProducts(matricula: string, userId?: string | null): Promise<any[]> {
+  const supabase = getSupabaseClient();
+  
+  // Try by matricula first
+  let { data, error } = await supabase
+    .from('products')
+    .select('id, code, name, price, description, category, image_url')
+    .eq('matricula', matricula)
+    .eq('is_active', true)
+    .order('name');
+  
+  if (error) {
+    console.error('Error fetching products by matricula:', error);
+  }
+  
+  // Fallback to user_id if no products found by matricula
+  if ((!data || data.length === 0) && userId) {
+    console.log(`No products by matricula ${matricula}, trying user_id ${userId}`);
+    const result = await supabase
+      .from('products')
+      .select('id, code, name, price, description, category, image_url')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('name');
+    
+    if (result.error) {
+      console.error('Error fetching products by user_id:', result.error);
+    }
+    data = result.data;
+  }
+  
+  console.log(`Found ${data?.length || 0} products`);
+  return data || [];
+}
+
+// Get products by code using matricula OR user_id
+async function getProductsByCode(matricula: string, codes: string[], userId?: string | null): Promise<any[]> {
+  const supabase = getSupabaseClient();
+  const products: any[] = [];
+  
+  for (const code of codes) {
+    // Try by matricula first
+    let { data, error } = await supabase
+      .from('products')
+      .select('id, code, name, price, description, category')
+      .eq('matricula', matricula)
+      .eq('code', code.toUpperCase())
+      .eq('is_active', true)
+      .maybeSingle();
+    
+    // Fallback to user_id
+    if (!data && userId) {
+      const result = await supabase
+        .from('products')
+        .select('id, code, name, price, description, category')
+        .eq('user_id', userId)
+        .eq('code', code.toUpperCase())
+        .eq('is_active', true)
+        .maybeSingle();
+      data = result.data;
+    }
+    
+    if (data) {
+      products.push(data);
+    }
+  }
+  
+  return products;
+}
+
+// Search products by name or description using matricula OR user_id
+async function searchProducts(matricula: string, query: string, userId?: string | null): Promise<any[]> {
+  const supabase = getSupabaseClient();
+  const searchTerm = query.toLowerCase().trim();
+  
+  // Try by matricula first
+  let { data, error } = await supabase
+    .from('products')
+    .select('id, code, name, price, description, category')
+    .eq('matricula', matricula)
+    .eq('is_active', true)
+    .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+    .limit(10);
+  
+  if (error) {
+    console.error('Error searching products by matricula:', error);
+  }
+  
+  // Fallback to user_id
+  if ((!data || data.length === 0) && userId) {
+    const result = await supabase
+      .from('products')
+      .select('id, code, name, price, description, category')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+      .limit(10);
+    
+    if (result.error) {
+      console.error('Error searching products by user_id:', result.error);
+    }
+    data = result.data;
+  }
+  
+  return data || [];
+}
+
+// Get behavior rules for user
+async function getBehaviorRules(userId: string): Promise<string | null> {
+  const supabase = getSupabaseClient();
+  
+  const { data } = await supabase
+    .from('ai_behavior_rules')
+    .select('rules')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  return data?.rules || null;
+}
+
+// Get company knowledge for user
+async function getCompanyKnowledge(userId: string): Promise<any | null> {
+  const supabase = getSupabaseClient();
+  
+  const { data } = await supabase
+    .from('company_knowledge')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  return data || null;
+}
+
+// Get AI memory config for user
+async function getAIMemoryConfig(userId: string): Promise<any | null> {
+  const supabase = getSupabaseClient();
+  
+  const { data, error } = await supabase
+    .from('client_ai_memory')
+    .select('config')
+    .eq('user_id', userId)
+    .maybeSingle();
+  
+  if (error) {
+    console.error('Error fetching AI memory config:', error);
+  }
+  
+  console.log('AI Memory config loaded:', data?.config ? 'Yes' : 'No');
+  return data?.config || null;
+}
+
+// Extract product codes from message (6 alphanumeric characters)
+function extractProductCodes(message: string): string[] {
+  const codePattern = /\b[A-Z0-9]{6}\b/gi;
+  const matches = message.match(codePattern);
+  return matches ? [...new Set(matches.map(m => m.toUpperCase()))] : [];
+}
+
+// Format price
+function formatPrice(price: number): string {
+  return `R$ ${price.toFixed(2).replace('.', ',')}`;
+}
+
+// Format products for prompt
+function formatProductsForPrompt(products: any[], title: string): string {
+  if (products.length === 0) return '';
+  
+  let formatted = `\n\n${title}:`;
+  products.forEach((product, index) => {
+    formatted += `\n${index + 1}. **${product.name}** (Código: ${product.code})`;
+    formatted += `\n   💰 ${formatPrice(product.price)}`;
+    if (product.category) formatted += ` | 📁 ${product.category}`;
+    if (product.description) formatted += `\n   📝 ${product.description}`;
+  });
+  
+  return formatted;
+}
+
+// Build system prompt based on user configuration
+async function buildSystemPrompt(userId: string, allProducts: any[]): Promise<string> {
+  const [behaviorRules, company, aiMemory] = await Promise.all([
+    getBehaviorRules(userId),
+    getCompanyKnowledge(userId),
+    getAIMemoryConfig(userId),
+  ]);
+
+  console.log('Building prompt with:', {
+    hasBehaviorRules: !!behaviorRules,
+    hasCompany: !!company,
+    hasAiMemory: !!aiMemory,
+    productCount: allProducts.length,
+    aiMemoryIdentity: aiMemory?.identity?.name || 'none',
+    aiMemoryCompany: aiMemory?.company?.name || 'none'
+  });
+
+  let prompt = `Você é uma assistente virtual de atendimento inteligente.
+
+📌 INSTRUÇÕES GERAIS:
+- Seja prestativa, amigável e profissional
+- Use emojis moderadamente para tornar a conversa agradável
+- Responda sempre em português do Brasil
+- Quando o cliente perguntar sobre produtos, use as informações do catálogo fornecido`;
+
+  // Add company info from company_knowledge table OR from AI memory config
+  const companyData = company || aiMemory?.company;
+  if (companyData) {
+    prompt += `\n\n🏢 INFORMAÇÕES DA EMPRESA:`;
+    if (companyData.name) prompt += `\n- Nome: ${companyData.name}`;
+    if (companyData.segment) prompt += `\n- Segmento: ${companyData.segment}`;
+    if (companyData.mission) prompt += `\n- Missão: ${companyData.mission}`;
+    if (companyData.hours) prompt += `\n- Horário: ${companyData.hours}`;
+    if (companyData.address) prompt += `\n- Endereço: ${companyData.address}`;
+    if (companyData.payment) prompt += `\n- Formas de pagamento: ${companyData.payment}`;
+    if (companyData.policies) prompt += `\n- Políticas: ${companyData.policies}`;
+  }
+
+  // Add AI identity from memory config
+  if (aiMemory?.identity) {
+    const identity = aiMemory.identity;
+    prompt += `\n\n🤖 SUA IDENTIDADE:`;
+    if (identity.name) prompt += `\n- Seu nome: ${identity.name}`;
+    if (identity.tone) {
+      const tones: Record<string, string> = {
+        friendly: 'Amigável e acolhedor',
+        formal: 'Profissional e respeitoso',
+        casual: 'Descontraído e leve',
+        technical: 'Técnico e preciso'
+      };
+      prompt += `\n- Tom de voz: ${tones[identity.tone] || identity.tone}`;
+    }
+    if (identity.greeting) prompt += `\n- Saudação inicial: ${identity.greeting}`;
+    if (identity.farewell) prompt += `\n- Despedida: ${identity.farewell}`;
+  }
+
+  // Add behavior rules from ai_behavior_rules OR from AI memory config
+  const rules = behaviorRules || aiMemory?.behavior?.rules || aiMemory?.behavior?.custom_rules;
+  if (rules) {
+    prompt += `\n\n📋 REGRAS DE COMPORTAMENTO:\n${rules}`;
+  }
+
+  // Add product catalog summary
+  if (allProducts.length > 0) {
+    prompt += `\n\n📦 CATÁLOGO DE PRODUTOS (${allProducts.length} itens disponíveis):`;
+    
+    // Group by category
+    const categories = new Map<string, any[]>();
+    allProducts.forEach(p => {
+      const cat = p.category || 'Sem categoria';
+      if (!categories.has(cat)) categories.set(cat, []);
+      categories.get(cat)!.push(p);
+    });
+    
+    categories.forEach((prods, cat) => {
+      prompt += `\n\n📁 ${cat}:`;
+      prods.forEach(p => {
+        prompt += `\n  • ${p.name} (${p.code}) - ${formatPrice(p.price)}`;
+      });
+    });
+    
+    prompt += `\n\n💡 Quando o cliente enviar um código de 6 caracteres, busque o produto correspondente e apresente as informações detalhadas.`;
+    prompt += `\n💡 Quando o cliente perguntar sobre produtos, use as informações acima para responder.`;
+  } else {
+    prompt += `\n\n📦 PRODUTOS: Nenhum produto cadastrado ainda.`;
+  }
+
+  prompt += `\n\n⚠️ IMPORTANTE:
+- Se o cliente perguntar algo que você não sabe, diga que vai verificar com a equipe
+- Nunca invente informações sobre produtos que não estão no catálogo
+- Se um código de produto não for encontrado, informe gentilmente`;
+
+  return prompt;
+}
+
+// Try calling OpenRouter with a specific model
+async function tryOpenRouterModel(
+  model: string, 
+  messages: any[], 
+  apiKey: string
+): Promise<{ success: boolean; content?: string; error?: string }> {
+  try {
+    console.log(`[OpenRouter] Trying model: ${model}`);
+    
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://isa-whatsapp-bot.com',
+        'X-Title': 'ISA WhatsApp Bot'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn(`[OpenRouter] Model ${model} failed: ${response.status} - ${errorText}`);
+      return { success: false, error: `${response.status}: ${errorText}` };
+    }
+
+    const data = await response.json();
+    
+    if (data.choices && data.choices.length > 0 && data.choices[0].message?.content) {
+      console.log(`[OpenRouter] Model ${model} succeeded`);
+      return { success: true, content: data.choices[0].message.content };
+    }
+    
+    return { success: false, error: 'No content in response' };
+  } catch (error) {
+    console.error(`[OpenRouter] Error with model ${model}:`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Call OpenRouter with fallback
+async function callOpenRouterWithFallback(messages: any[], apiKey: string): Promise<string> {
+  for (const model of OPENROUTER_MODELS) {
+    const result = await tryOpenRouterModel(model.id, messages, apiKey);
+    if (result.success && result.content) {
+      return result.content;
+    }
+  }
+  throw new Error('All AI models failed');
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { messages, cpf, matricula: providedMatricula, userId: providedUserId } = await req.json();
+    const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
+
+    if (!openRouterApiKey) {
+      throw new Error('OPENROUTER_API_KEY is not configured');
+    }
+
+    // Get user info (userId and matricula) from CPF, Matricula or use provided values
+    let userId = providedUserId;
+    let userMatricula = providedMatricula;
+    
+    if (!userId || !userMatricula) {
+      const identifier = cpf || providedMatricula;
+      if (identifier) {
+        const userInfo = await getUserInfoFromIdentifier(identifier);
+        userId = userId || userInfo.userId;
+        userMatricula = userMatricula || userInfo.matricula;
+      }
+    }
+
+    console.log('Processing request for userId:', userId, 'matricula:', userMatricula, 'cpf:', cpf);
+
+    // Get all products for this user by matricula (with user_id fallback)
+    let allProducts: any[] = [];
+    if (userMatricula || userId) {
+      allProducts = await getAllUserProducts(userMatricula || '', userId);
+      console.log(`Found ${allProducts.length} products for matricula ${userMatricula} / userId ${userId}`);
+    }
+
+    // Build system prompt with user's configuration and products
+    const systemPrompt = userId 
+      ? await buildSystemPrompt(userId, allProducts)
+      : `Você é a ISA, uma assistente de IA. Seja prestativa e amigável.`;
+
+    // Get the last user message to check for product codes
+    const lastUserMessage = [...messages].reverse().find((m: any) => m.role === 'user');
+    let productContext = '';
+    
+    if (lastUserMessage && userMatricula) {
+      const messageContent = lastUserMessage.content;
+      
+      // Check for product codes
+      const codes = extractProductCodes(messageContent);
+      if (codes.length > 0) {
+        console.log('Extracted product codes:', codes);
+        const foundProducts = await getProductsByCode(userMatricula, codes, userId);
+        
+        if (foundProducts.length > 0) {
+          productContext = formatProductsForPrompt(foundProducts, '📦 PRODUTOS ENCONTRADOS');
+          productContext += '\n\nApresente estes produtos de forma amigável ao cliente!';
+        } else {
+          productContext = `\n\n⚠️ Código(s) não encontrado(s): ${codes.join(', ')}\nInforme gentilmente que o código não foi localizado.`;
+        }
+      } else {
+        // Search for products by keywords
+        const searchTerms = ['preço', 'quanto custa', 'tem', 'quero', 'cardápio', 'produtos', 'menu'];
+        const shouldSearch = searchTerms.some(term => 
+          messageContent.toLowerCase().includes(term)
+        );
+        
+        if (shouldSearch) {
+          // Extract potential product name from message
+          const words = messageContent.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+          for (const word of words) {
+            if (!searchTerms.includes(word)) {
+              const searchResults = await searchProducts(userMatricula, word, userId);
+              if (searchResults.length > 0) {
+                productContext = formatProductsForPrompt(searchResults, '🔍 PRODUTOS RELACIONADOS');
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const fullSystemPrompt = systemPrompt + productContext;
+
+    console.log('System prompt length:', fullSystemPrompt.length);
+    console.log('Product context:', productContext ? 'Added' : 'None');
+
+    // Build messages for AI
+    const aiMessages = [
+      { role: 'system', content: fullSystemPrompt },
+      ...messages,
+    ];
+
+    // Call OpenRouter with fallback
+    const reply = await callOpenRouterWithFallback(aiMessages, openRouterApiKey);
+
+    return new Response(JSON.stringify({ message: reply }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error: unknown) {
+    console.error('Error in isa-chat function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

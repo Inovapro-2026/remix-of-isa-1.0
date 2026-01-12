@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Limpar CPF - Debug</title>
+</head>
+<body>
+    <h1>Limpar CPF do LocalStorage</h1>
+    <button onclick="limparCPF()">Limpar CPF</button>
+    <button onclick="verCPF()">Ver CPF Atual</button>
+    <div id="resultado"></div>
+    
+    <script>
+        function limparCPF() {
+            localStorage.removeItem('isa_whatsapp_cpf');
+            document.getElementById('resultado').innerHTML = 'CPF removido com sucesso!';
+        }
+        
+        function verCPF() {
+            const cpf = localStorage.getItem('isa_whatsapp_cpf');
+            document.getElementById('resultado').innerHTML = 'CPF atual: ' + (cpf || 'nenhum');
+        }
+        
+        // Ver ao carregar
+        verCPF();
+    </script>
+</body>
+</html>

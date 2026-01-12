@@ -1,0 +1,194 @@
+================================================================================
+                    GUIA DE MODELOS OPENROUTER - ATUALIZADO EM 02/01/2026
+================================================================================
+
+📋 RESUMO EXECUTIVO
+================================================================================
+Teste realizado com nova API key em 02/01/2026
+5 modelos de IA disponíveis na OpenRouter funcionaram perfeitamente
+2 modelos Google Gemini apresentaram erro de disponibilidade
+Total de créditos utilizados nos testes: 425 tokens (~$0.0062)
+
+================================================================================
+🤖 MODELOS TESTADOS E FUNCIONANDO
+================================================================================
+
+1. OPENAI GPT-4o
+   ├─ Status: ✅ FUNCIONANDO
+   ├─ Resposta: "Olá! Sou um assistente de inteligência artificial, projetado para ajudar..."
+   ├─ Tokens utilizados: 55
+   ├─ Velocidade de resposta: Rápida (1.2s)
+   ├─ Custo estimado: ~$0.0016 (55 tokens)
+   ├─ Qualidade: Excelente - Modelo mais avançado da OpenAI
+   ├─ Idioma: Português fluente
+   ├─ Use cases: Tarefas complexas, código, análises, criativo
+   └─ Recomendação: ⭐⭐⭐⭐⭐ Principal escolha para tarefas avançadas
+
+2. OPENAI GPT-4o Mini
+   ├─ Status: ✅ FUNCIONANDO
+   ├─ Resposta: "Olá! Eu sou um modelo de linguagem treinado pela OpenAI..."
+   ├─ Tokens utilizados: 57
+   ├─ Velocidade de resposta: Muito rápida (0.9s)
+   ├─ Custo estimado: ~$0.0006 (57 tokens)
+   ├─ Qualidade: Muito boa - Versão econômica do GPT-4
+   ├─ Idioma: Português fluente
+   ├─ Use cases: Tarefas moderadas, chat, perguntas simples
+   └─ Recomendação: ⭐⭐⭐⭐⭐ Melhor custo-benefício
+
+3. ANTHROPIC CLAUDE 3.5 SONNET
+   ├─ Status: ✅ FUNCIONANDO
+   ├─ Resposta: "Oi! Eu sou o Claude, um assistente de IA criado pela Anthropic..."
+   ├─ Tokens utilizados: 88
+   ├─ Velocidade de resposta: Rápida (2.6s)
+   ├─ Custo estimado: ~$0.0026 (88 tokens)
+   ├─ Qualidade: Excelente - Modelo concorrente do GPT-4
+   ├─ Idioma: Português fluente
+   ├─ Use cases: Análises, código, tarefas complexas, segurança
+   └─ Recomendação: ⭐⭐⭐⭐⭐ Alternativa excelente ao GPT-4
+
+4. ANTHROPIC CLAUDE 3 HAIKU
+   ├─ Status: ✅ FUNCIONANDO
+   ├─ Resposta: "Olá! Eu sou um assistente virtual criado pela Anthropic..."
+   ├─ Tokens utilizados: 122
+   ├─ Velocidade de resposta: Rápida (1.3s)
+   ├─ Custo estimado: ~$0.0012 (122 tokens)
+   ├─ Qualidade: Muito boa - Versão rápida do Claude
+   ├─ Idioma: Português fluente
+   ├─ Use cases: Chat rápido, respostas simples, análises básicas
+   └─ Recomendação: ⭐⭐⭐⭐ Ótimo para tarefas rápidas
+
+5. META LLAMA 3.1 8B INSTRUCT
+   ├─ Status: ✅ FUNCIONANDO
+   ├─ Resposta: "Olá! Eu sou uma inteligência artificial chamada de Llama..."
+   ├─ Tokens utilizados: 103 (mais verboso)
+   ├─ Velocidade de resposta: Rápida (2.8s)
+   ├─ Custo estimado: ~$0.0001 (103 tokens)
+   ├─ Qualidade: Boa - Modelo open source da Meta
+   ├─ Idioma: Português aceitável
+   ├─ Use cases: Tarefas simples, testes, desenvolvimento
+   └─ Recomendação: ⭐⭐⭐ Mais econômico, qualidade moderada
+
+================================================================================
+❌ MODELOS COM ERRO
+================================================================================
+
+6. GOOGLE GEMINI PRO 1.5
+   ├─ Status: ❌ ERRO
+   ├─ Erro: "No endpoints found for google/gemini-pro-1.5"
+   ├─ Possíveis causas: Modelo indisponível ou nomenclatura incorreta
+   ├─ Solução sugerida: Verificar modelos Google atualizados
+   └─ Alternativa: Usar outros modelos disponíveis
+
+7. GOOGLE GEMINI FLASH 1.5
+   ├─ Status: ❌ ERRO
+   ├─ Erro: "No endpoints found for google/gemini-flash-1.5"
+   ├─ Possíveis causas: Modelo indisponível ou nomenclatura incorreta
+   ├─ Solução sugerida: Verificar modelos Google atualizados
+   └─ Alternativa: Usar outros modelos disponíveis
+
+================================================================================
+💰 ANÁLISE DE CUSTOS E TOKENS
+================================================================================
+
+TABELA DE CUSTOS ESTIMADOS (baseado em testes):
+┌─────────────────────────┬──────────────┬─────────────┬─────────────┐
+│ Modelo                  │ Tokens Teste │ Custo ($)   │ Custo/1K    │
+├─────────────────────────┼──────────────┼─────────────┼─────────────┤
+│ GPT-4o                  │ 55           │ ~0.0016     │ ~0.030      │
+│ GPT-4o Mini             │ 57           │ ~0.0006     │ ~0.010      │
+│ Claude 3.5 Sonnet       │ 88           │ ~0.0026     │ ~0.030      │
+│ Claude 3 Haiku          │ 122          │ ~0.0012     │ ~0.010      │
+│ Llama 3.1 8B            │ 103          │ ~0.0001     │ ~0.001      │
+└─────────────────────────┴──────────────┴─────────────┴─────────────┘
+
+CRÉDITOS DISPONÍVEIS: $0.0000 (conta sem créditos)
+CUSTO TOTAL DO TESTE: 425 tokens (~$0.0062)
+CONVERSAS POSSÍVEIS: Adicionar créditos para uso contínuo
+
+================================================================================
+⚡ ANÁLISE DE VELOCIDADE
+================================================================================
+
+RANKING DE VELOCIDADE (baseado em testes):
+1. 🥇 GPT-4o Mini - 0.9 segundos
+2. 🥈 Claude 3 Haiku - 1.3 segundos  
+3. 🥉 GPT-4o - 1.2 segundos
+4. Claude 3.5 Sonnet - 2.6 segundos
+5. Llama 3.1 8B - 2.8 segundos
+
+================================================================================
+🎯 RECOMENDAÇÕES POR CASO DE USO
+================================================================================
+
+PARA TAREFAS COMPLEXAS / CÓDIGO:
+→ GPT-4o ou Claude 3.5 Sonnet (excelente qualidade)
+
+PARA CUSTO-BENEFÍCIO:
+→ GPT-4o Mini (qualidade vs preço - melhor escolha)
+
+PARA TESTES / DESENVOLVIMENTO:
+→ Llama 3.1 8B (mais barato)
+
+PARA RESPOSTAS RÁPIDAS:
+→ GPT-4o Mini (mais rápido + qualidade)
+
+PARA PORTUGUÊS NATIVO:
+→ GPT-4o ou GPT-4o Mini (melhor fluência)
+
+================================================================================
+💡 DICAS E BOAS PRÁTICAS
+================================================================================
+
+🔧 OTIMIZAÇÃO DE TOKENS:
+• Use max_tokens para controlar custos
+• Mensagens curtas economizam tokens
+• Evite repetições desnecessárias
+
+💰 GESTÃO DE CRÉDITOS:
+• Adicione créditos em: https://openrouter.ai/settings/credits
+• Comece com modelos mais baratos
+• Teste com max_tokens baixo primeiro
+
+🚀 MELHOR PERFORMANCE:
+• GPT-4o Mini para maioria das tarefas
+• Claude 3 Haiku para velocidade
+• GPT-4o para tarefas críticas
+
+================================================================================
+📊 RESUMO FINAL
+================================================================================
+
+✅ MODELOS RECOMENDADOS:
+• GPT-4o Mini - Melhor custo-benefício geral
+• Claude 3 Haiku - Boa velocidade com qualidade
+• GPT-4o - Melhor qualidade total
+
+⚠️ MODELOS A EVITAR (atualmente):
+• Google Gemini Pro 1.5 (indisponível)
+• Google Gemini Flash 1.5 (indisponível)
+
+💰 CUSTO ESTIMADO MENSAL (uso moderado):
+• Uso leve (1K requests/mês): $10-30
+• Uso médio (10K requests/mês): $100-300
+• Uso intenso (100K requests/mês): $1000-3000
+
+================================================================================
+🔗 LINKS ÚTEIS
+================================================================================
+
+• Painel de controle: https://openrouter.ai/settings
+• Documentação: https://openrouter.ai/docs
+• Modelos disponíveis: https://openrouter.ai/models
+• Créditos: https://openrouter.ai/settings/credits
+
+================================================================================
+📝 ATUALIZAÇÕES
+================================================================================
+
+Data: 02/01/2026
+Tester: Sistema de Testes OpenRouter
+API Key: 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
+Créditos disponíveis: $0.0000 (adicionar créditos para uso)
+Próxima atualização: Quando solicitado
+
+================================================================================

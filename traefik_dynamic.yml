@@ -1,0 +1,91 @@
+http:
+  routers:
+    frontend-router:
+      rule: Host(`isa.inovapro.cloud`)
+      service: frontend-service
+      entryPoints:
+      - websecure
+      tls:
+        certResolver: myresolver
+      priority: 1
+    backend-socket-router:
+      rule: Host(`isa.inovapro.cloud`) && PathPrefix(`/socket.io/`)
+      service: backend-service
+      entryPoints:
+      - websecure
+      tls:
+        certResolver: myresolver
+      priority: 100
+    backend-api-router:
+      rule: Host(`isa.inovapro.cloud`) && PathPrefix(`/api`)
+      service: backend-service
+      entryPoints:
+      - websecure
+      tls:
+        certResolver: myresolver
+      priority: 50
+    backend-whatsapp-router:
+      rule: Host(`isa.inovapro.cloud`) && PathPrefix(`/whatsapp`)
+      service: backend-service
+      entryPoints:
+      - websecure
+      tls:
+        certResolver: myresolver
+      priority: 50
+    inovabank-router:
+      rule: Host(`inovabank.inovapro.cloud`)
+      service: inovabank-service
+      entryPoints:
+      - websecure
+      tls:
+        certResolver: myresolver
+      priority: 1
+    kokoro-tts-router:
+      rule: Host(`inovabank.inovapro.cloud`) && PathPrefix(`/api/tts`)
+      service: kokoro-tts-service
+      entryPoints:
+      - websecure
+      tls:
+        certResolver: myresolver
+      priority: 50
+    hub-frontend-router:
+      rule: Host(`hub.inovapro.cloud`)
+      service: hub-frontend-service
+      entryPoints:
+      - websecure
+      tls:
+        certResolver: myresolver
+      priority: 1
+    hub-backend-router:
+      rule: Host(`hub.inovapro.cloud`) && PathPrefix(`/api`)
+      service: hub-backend-service
+      entryPoints:
+      - websecure
+      tls:
+        certResolver: myresolver
+      priority: 50
+  services:
+    frontend-service:
+      loadBalancer:
+        servers:
+        - url: http://172.17.0.1:9001
+    backend-service:
+      loadBalancer:
+        servers:
+        - url: http://172.17.0.1:3001
+    inovabank-service:
+      loadBalancer:
+        servers:
+        - url: http://172.17.0.1:8083
+    kokoro-tts-service:
+      loadBalancer:
+        servers:
+        - url: http://172.17.0.1:8082
+    hub-frontend-service:
+      loadBalancer:
+        servers:
+        - url: http://172.17.0.1:3002
+    hub-backend-service:
+      loadBalancer:
+        servers:
+        - url: http://172.17.0.1:3003

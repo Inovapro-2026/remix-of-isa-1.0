@@ -1,0 +1,238 @@
+# **PROMOT SIMPLIFICADO: MELHORIA DO CHAT, WHATSAPP E MEMÓRIA DA ISA**
+
+## **🎯 OBJETIVO**
+Ajustar e melhorar três abas críticas do painel da ISA para torná-las mais funcionais, integradas e modernas, focando na experiência do usuário final.
+
+## **📱 ABA 1: CHAT WHATSAPP (CORREÇÃO E MODERNIZAÇÃO)**
+
+### **PROBLEMAS ATUAIS A RESOLVER**
+- ❌ Só mostra mensagens **recebidas**, não as **enviadas**
+- ❌ Não atualiza automaticamente (precisa dar refresh)
+- ❌ Interface básica e pouco intuitiva
+
+### **SOLUÇÕES E MELHORIAS**
+
+#### **1. ESTRUTURA DA TELA**
+```
+[Layout: Três colunas]
+├── COLUNA 1: LISTA DE CONVERSAS (25%)
+│   • Busca rápida de contatos
+│   • Lista de conversas com: foto, nome, última mensagem, horário
+│   • Badge com número de mensagens não lidas
+│   • Destaque para conversa ativa
+│
+├── COLUNA 2: ÁREA DO CHAT (50%)
+│   • Cabeçalho com: foto do contato, nome, status online/offline
+│   • Histórico completo de mensagens (recebidas E enviadas)
+│   • Identificação clara:
+│     - Mensagem recebida: fundo cinza, alinhada à esquerda, ícone 👤
+│     - Mensagem enviada: fundo azul/verde, alinhada à direita, ícone 🧠
+│   • Status de entrega: ✓ (enviada), ✓✓ (entregue), ✓✓🔵 (lida)
+│
+└── COLUNA 3: INFORMAÇÕES (25%)
+    • Dados do contato (nome, número, tags)
+    • Histórico de compras/pedidos
+    • Controles rápidos da IA para esta conversa
+```
+
+#### **2. FUNCIONALIDADES OBRIGATÓRIAS**
+- **Atualização em tempo real**: WebSocket para novas mensagens (atualiza a cada 1-2 segundos)
+- **Envio de mensagens**: Campo de texto + botão enviar + anexos (imagem, documento, áudio)
+- **Modos de resposta**:
+  - 🧠 **IA Automática**: Responde sozinha (padrão)
+  - 👨‍💻 **Manual**: Humano digita e envia
+  - ⚡ **Misto**: IA sugere resposta, humano aprova
+- **Notificações**: Badge na aba quando nova mensagem chega
+- **"Digitando..."**: Indicador quando o cliente está escrevendo
+
+#### **3. DIFERENCIAÇÃO VISUAL DAS MENSAGENS**
+```
+MENSAGEM RECEBIDA (Cliente → Nós):
+• Alinhamento: Esquerda
+• Cor de fundo: Cinza claro (#F5F5F5)
+• Ícone: 👤 (avatar do cliente)
+• Borda: Nenhuma
+
+MENSAGEM ENVIADA PELA IA (Nós → Cliente):
+• Alinhamento: Direita
+• Cor de fundo: Azul suave (#E3F2FD)
+• Ícone: 🧠 (cérebro/IA)
+• Borda: Sutil azul
+• Tag: "IA" pequena abaixo da mensagem
+
+MENSAGEM ENVIADA MANUALMENTE (Humano → Cliente):
+• Alinhamento: Direita
+• Cor de fundo: Verde suave (#E8F5E9)
+• Ícone: 👨‍💻 (emoji de pessoa no computador)
+• Borda: Sutil verde
+```
+
+## **🔗 ABA 2: MEU WHATSAPP (GERENCIAMENTO DE CONEXÕES)**
+
+### **FLUXO DE CONEXÃO SIMPLIFICADO**
+```
+1. Cliente clica em "CONECTAR WHATSAPP"
+2. Se for PRIMEIRA VEZ:
+   • Abre modal pedindo CPF (formato: 000.000.000-00)
+   • Valida CPF (11 dígitos, dígitos verificadores)
+   • Cria pasta exclusiva: /sessions/[CPF]/
+3. Gera QR CODE real
+   • Exibe em modal grande
+   • Contador de 60 segundos
+   • Botão "REGENERAR QR" se expirar
+4. Após escanear:
+   • Salva sessão na pasta do CPF
+   • Status muda para "CONECTADO"
+   • Mostra card da nova conta
+```
+
+### **CARD DE CONTA WHATSAPP (por CPF)**
+```
+┌─────────────────────────────────────────┐
+│ CARD DA CONTA                           │
+│ • Avatar (gerado do CPF)                │
+│ • CPF: 123.456.789-00                   │
+│ • Status: 🟢 CONECTADO (5 min atrás)    │
+│ • Número: +55 11 98765-4321             │
+│                                         │
+│ 📊 ESTATÍSTICAS:                        │
+│ • Mensagens hoje: 48                    │
+│ • Contatos: 12                          │
+│ • Taxa resposta: 96%                    │
+│                                         │
+│ 🎛️ CONTROLES:                          │
+│ [🔄] Conectar/Desconectar               │
+│ [⏸️] Pausar/Retomar IA                  │
+│ [🧹] Limpar Sessão                      │
+│ [🗑️] Excluir Conta (com confirmação)    │
+│                                         │
+│ [💬] Abrir Chat     [🧠] Memória IA     │
+└─────────────────────────────────────────┘
+```
+
+### **CONTROLES POR CONTA**
+- **Conectar/Desconectar**: Alterna estado da conexão WhatsApp
+- **Pausar IA**: Para a IA de responder automaticamente (botão fica laranja)
+- **Limpar Sessão**: Remove dados locais, mantém configurações
+- **Excluir Conta**: Remove pasta completa do CPF (pede confirmação dupla)
+- **Abrir Chat**: Vai direto para aba Chat com esta conta
+- **Memória IA**: Vai para aba Memória IA já com esta conta selecionada
+
+### **RECONEXÃO AUTOMÁTICA**
+- Quando usuário volta ao sistema
+- Verifica pasta do CPF
+- Se tem sessão salva → Reconecta automaticamente (sem pedir CPF)
+- Se não tem → Pede novo QR Code
+- Status atualizado em tempo real
+
+## **🧠 ABA 3: MEMÓRIA DE IA (CONFIGURAÇÃO REAL)**
+
+### **PROBLEMA ATUAL**
+- Configurações não funcionam na prática
+- IA não segue regras definidas
+- Produtos cadastrados não aparecem nas respostas
+
+### **SOLUÇÃO: SISTEMA DE MEMÓRIA REAL**
+
+#### **1. SELEÇÃO DE CONTA**
+- Dropdown no topo: "Selecione uma conta (CPF)"
+- Mostra apenas contas WhatsApp conectadas
+- Ao selecionar → Carrega configurações específicas daquela conta
+
+#### **2. CONFIGURAÇÕES POR SEÇÃO**
+
+**SEÇÃO 1: IDENTIDADE DA IA**
+- Nome da IA: [ISA ________] (editável)
+- Tom de voz: ▢ Formal ▢ Casual ▣ Amigável ▢ Técnico
+- Saudação padrão: [Olá! Eu sou a [Nome], como posso ajudar?]
+- Usar emojis: ▣ Sim (moderados) ▢ Não
+
+**SEÇÃO 2: CONHECIMENTO DA EMPRESA**
+- **Card de texto expansível** para cadastrar:
+  - Nome da empresa, segmento
+  - Produtos/serviços (com nome, descrição, preço)
+  - Horário de funcionamento
+  - Formas de pagamento
+  - Políticas importantes
+- **Sistema de validação**: Testa se os produtos cadastrados estão sendo reconhecidos
+
+**SEÇÃO 3: REGRAS DE COMPORTAMENTO**
+- [✓] Cumprimentar sempre que iniciar conversa
+- [✓] Mostrar cardápio só quando cliente pedir
+- [✓] Coletar endereço completo antes de finalizar pedido
+- Palavras que pausam a IA: "humano", "atendente", "reclamação"
+
+**SEÇÃO 4: TESTE EM TEMPO REAL**
+- Campo: "Teste sua IA: [Digite uma pergunta...]"
+- Botão: [▶️ TESTAR]
+- Mostra como a IA responderia COM AS CONFIGURAÇÕES ATUAIS
+- Exemplo:
+  - Você: "Olá, quero fazer um pedido"
+  - ISA: "Olá! Antes de mostrar o cardápio, poderia me dizer o que procura?" ✅
+
+#### **3. CONTROLES DA ABA**
+- [💾 SALVAR] → Salva tudo na pasta do CPF (arquivo `memory.json`)
+- [🔄 RESTAURAR PADRÃO] → Volta para configuração inicial
+- [📤 EXPORTAR] → Baixa arquivo com configurações
+- [📥 IMPORTAR] → Carrega configurações de outro CPF
+
+#### **4. SINCRONIZAÇÃO COM CHAT**
+- Quando salva na Memória IA → Chat recarrega configurações automaticamente
+- Cada resposta no Chat usa a memória específica daquele CPF
+- Sistema verifica se configurações estão atualizadas antes de cada resposta
+
+## **🔄 INTEGRAÇÃO ENTRE AS 3 ABAS**
+
+### **FLUXO DO USUÁRIO**
+```
+1. ABA WHATSAPP → Conecta conta com CPF
+2. ABA MEMÓRIA IA → Configura comportamento da IA para essa conta
+3. ABA CHAT → Usa a conta conectada, com IA configurada
+```
+
+### **DADOS COMPARTILHADOS**
+- **Pasta por CPF** armazena tudo:
+  - Sessão WhatsApp (da aba WhatsApp)
+  - Configurações IA (da aba Memória)
+  - Histórico de conversas (da aba Chat)
+- Atualização em uma aba → Salva na pasta → Outras abas leem automaticamente
+
+### **NAVEGAÇÃO RÁPIDA**
+- No card WhatsApp: Botão "💬 CHAT" → Abre Chat com essa conta
+- No card WhatsApp: Botão "🧠 MEMÓRIA" → Abre Memória IA já com CPF selecionado
+- No Chat: Link "Configurar IA" → Vai para Memória IA da conta ativa
+- Na Memória IA: Botão "Testar no Chat" → Abre conversa de teste
+
+## **✅ CRITÉRIOS DE SUCESSO**
+
+### **PARA O CHAT:**
+- [ ] Mostra mensagens recebidas E enviadas
+- [ ] Atualiza automaticamente (sem precisar dar F5)
+- [ ] Interface moderna tipo WhatsApp Web
+- [ ] Diferenciação clara entre mensagens da IA e humanas
+- [ ] Status de entrega das mensagens (✓, ✓✓, ✓✓🔵)
+
+### **PARA O WHATSAPP:**
+- [ ] Conexão real via QR Code
+- [ ] Autenticação por CPF na primeira vez
+- [ ] Reconexão automática em visitas futuras
+- [ ] Cards com controles completos por conta
+- [ ] Status em tempo real
+
+### **PARA A MEMÓRIA IA:**
+- [ ] Configurações realmente afetam o comportamento da IA
+- [ ] Produtos cadastrados aparecem nas respostas
+- [ ] Teste em tempo real funciona
+- [ ] Sincronização automática com o Chat
+- [ ] Cada CPF tem sua configuração independente
+
+## **🚀 ENTREGÁVEIS FINAIS**
+1. **Chat moderno e funcional** que mostra todo o histórico
+2. **Sistema de conexão WhatsApp** com CPF e sessões persistentes
+3. **Memória IA configurável** que realmente funciona
+4. **Integração completa** entre as três abas
+5. **Experiência unificada** para gerenciar WhatsApp com IA
+
+---
+
+**Este prompt foca apenas nas melhorias necessárias, sem alterar o que já está funcionando (como sistema de matrículas e aprovação de clientes).**

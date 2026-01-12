@@ -1,0 +1,41 @@
+export default {
+  apps: [
+    {
+      name: 'isa-frontend',
+      script: 'npm',
+      args: 'run dev',
+      cwd: '/root/INOVAPRO/isa-1.0-de9193c7',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 9001,
+        VITE_PORT: 9001
+      },
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
+      max_memory_restart: '1G',
+      error_file: '/root/INOVAPRO/isa-1.0-de9193c7/logs/isa-frontend-error.log',
+      out_file: '/root/INOVAPRO/isa-1.0-de9193c7/logs/isa-frontend-out.log',
+      log_file: '/root/INOVAPRO/isa-1.0-de9193c7/logs/isa-frontend-combined.log',
+      time: true
+    },
+    {
+      name: 'isa-whatsapp',
+      script: '/usr/bin/npm',
+      args: 'run start:server',
+      cwd: '/root/INOVAPRO/isa-1.0-de9193c7',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3001
+      },
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
+      max_memory_restart: '1G',
+      error_file: '/root/INOVAPRO/isa-1.0-de9193c7/logs/isa-whatsapp-error.log',
+      out_file: '/root/INOVAPRO/isa-1.0-de9193c7/logs/isa-whatsapp-out.log',
+      log_file: '/root/INOVAPRO/isa-1.0-de9193c7/logs/isa-whatsapp-combined.log',
+      time: true
+    }
+  ]
+};

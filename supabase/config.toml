@@ -1,0 +1,28 @@
+project_id = "mcmkzimvkomfytfaybpz"
+
+[functions.provision-user]
+verify_jwt = false
+
+[functions.isa-chat]
+verify_jwt = false
+
+[functions.isa-support-chat]
+verify_jwt = false
+
+[functions.test-behavior-ai]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.whatsapp-proxy]
+verify_jwt = false
+
+[functions.mercadopago-create-payment]
+verify_jwt = false
+
+[functions.mercadopago-webhook]
+verify_jwt = false
+
+[functions.isa-create-payment]
+verify_jwt = false

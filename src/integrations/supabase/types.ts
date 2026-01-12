@@ -188,6 +188,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_local_memory: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          matricula: string
+          table_name: string
+          updated_at: string
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          matricula: string
+          table_name: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          matricula?: string
+          table_name?: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Relationships: []
+      }
       announcement_reads: {
         Row: {
           announcement_id: string

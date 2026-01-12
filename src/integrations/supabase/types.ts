@@ -1066,6 +1066,39 @@ export type Database = {
         }
         Relationships: []
       }
+      vitrine_visits: {
+        Row: {
+          id: string
+          referrer: string | null
+          seller_id: string | null
+          session_id: string | null
+          user_agent: string | null
+          visited_at: string
+          visitor_ip: string | null
+          vitrine_id: string
+        }
+        Insert: {
+          id?: string
+          referrer?: string | null
+          seller_id?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          visited_at?: string
+          visitor_ip?: string | null
+          vitrine_id: string
+        }
+        Update: {
+          id?: string
+          referrer?: string | null
+          seller_id?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          visited_at?: string
+          visitor_ip?: string | null
+          vitrine_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_contacts: {
         Row: {
           created_at: string | null

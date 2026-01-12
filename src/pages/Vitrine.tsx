@@ -167,6 +167,31 @@ const Vitrine = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [matricula, setMatricula] = useState<string>("");
 
+  // Track vitrine visit
+  const trackVisit = async (vitrineId: string, sellerId?: string) => {
+    try {
+      // Generate a simple session ID
+      const sessionId = sessionStorage.getItem('vitrine_session') || 
+        `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      if (!sessionStorage.getItem('vitrine_session')) {
+        sessionStorage.setItem('vitrine_session', sessionId);
+      }
+
+      await supabase.from('vitrine_visits').insert({
+        vitrine_id: vitrineId,
+        seller_id: sellerId || null,
+        referrer: document.referrer || null,
+        user_agent: navigator.userAgent,
+        session_id: sessionId
+      });
+
+      console.log('[Vitrine] Visit tracked:', vitrineId);
+    } catch (e) {
+      console.error('[Vitrine] Failed to track visit:', e);
+    }
+  };
+
   useEffect(() => {
     if (!cpf) return;
     loadVitrine();
@@ -224,11 +249,17 @@ const Vitrine = () => {
       setVitrineCategories(normalizedCategories);
       setConfig(vitrineConfig);
       
-      // Get matricula from vitrine data
+      // Get matricula and user_id from vitrine data
       const vitrineMatricula = (data as any)?.matricula;
+      const vitrineSellerId = (data as any)?.user_id;
+      const vitrineIdentifier = (data as any)?.vitrine_id || identifier;
+      
       if (vitrineMatricula) {
         setMatricula(vitrineMatricula);
       }
+
+      // Track the visit
+      trackVisit(vitrineIdentifier, vitrineSellerId);
 
       if (normalizedProducts.length === 0 && !vitrineConfig) {
         setError('Esta vitrine ainda não foi configurada.');

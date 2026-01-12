@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: '0.0.0.0',
-      port: 9001,
+      port: 8080,
       allowedHosts: [
         "isa.inovapro.cloud",
         ".inovapro.cloud",

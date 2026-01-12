@@ -104,9 +104,13 @@ async function createPixPayment(
   description: string,
   customerEmail: string,
   customerName: string,
+  customerCpf: string,
   notificationUrl: string,
   retryCount = 0
 ): Promise<{ success: boolean; data?: any; error?: string }> {
+  
+  // Clean CPF - remove non-digits
+  const cleanCpf = customerCpf?.replace(/\D/g, '') || '';
   
   const payload: any = {
     transaction_amount: total,
@@ -118,6 +122,11 @@ async function createPixPayment(
       email: customerEmail,
       first_name: customerName.split(' ')[0] || 'Cliente',
       last_name: customerName.split(' ').slice(1).join(' ') || 'Cliente',
+      // CPF is REQUIRED for PIX payments in Mercado Pago
+      identification: cleanCpf.length === 11 ? {
+        type: 'CPF',
+        number: cleanCpf,
+      } : undefined,
     },
   };
 
@@ -151,7 +160,7 @@ async function createPixPayment(
       };
     }
 
-    // Handle policy errors - retry without identification
+    // Handle policy errors - retry with different approach
     if (data.code === 'PA_UNAUTHORIZED_RESULT_FROM_POLICIES' && retryCount < 2) {
       console.log('[ISA-Payment] Policy error, retrying...');
       return createPixPayment(
@@ -161,6 +170,7 @@ async function createPixPayment(
         description,
         customerEmail,
         customerName,
+        customerCpf,
         notificationUrl,
         retryCount + 1
       );
@@ -333,6 +343,7 @@ serve(async (req) => {
 
     // Handle PIX payment
     if (paymentMethod === 'pix') {
+      const customerCpf = body.customer_cpf || '';
       const pixResult = await createPixPayment(
         accessToken,
         paymentId,
@@ -340,6 +351,7 @@ serve(async (req) => {
         `Compra - ${sellerName}`,
         customerEmail,
         customerName,
+        customerCpf,
         `${supabaseUrl}/functions/v1/mercadopago-webhook`
       );
 

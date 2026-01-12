@@ -271,49 +271,70 @@ async function buildSystemPrompt(userId: string, allProducts: any[]): Promise<st
     aiMemoryCompany: aiMemory?.company?.name || 'none'
   });
 
-  let prompt = `Você é uma assistente virtual de atendimento inteligente.
+  // Get AI identity from memory config
+  const identity = aiMemory?.identity;
+  const aiName = identity?.name || 'ISA';
+  const aiFunction = identity?.function || 'assistente virtual de atendimento';
+
+  // Get tone of voice
+  const toneMap: Record<string, string> = {
+    'formal': 'formal e profissional',
+    'vendedor': 'persuasivo e focado em vendas',
+    'amigavel': 'amigável e acolhedor',
+    'premium': 'sofisticado e premium',
+    'tecnico': 'técnico e especializado',
+    'jovem': 'jovem e descontraído'
+  };
+  const behavior = aiMemory?.behavior;
+  const tone = behavior?.tone ? toneMap[behavior.tone] || behavior.tone : 'amigável e profissional';
+
+  let prompt = `Você é ${aiName}, ${aiFunction}.
 
 📌 INSTRUÇÕES GERAIS:
-- Seja prestativa, amigável e profissional
+- Seu tom de voz deve ser ${tone}
 - Use emojis moderadamente para tornar a conversa agradável
 - Responda sempre em português do Brasil
 - Quando o cliente perguntar sobre produtos, use as informações do catálogo fornecido`;
 
-  // Add company info from company_knowledge table OR from AI memory config
-  const companyData = company || aiMemory?.company;
+  // Add company info from AI memory config OR company_knowledge table
+  const companyData = aiMemory?.company || company;
   if (companyData) {
     prompt += `\n\n🏢 INFORMAÇÕES DA EMPRESA:`;
-    if (companyData.name) prompt += `\n- Nome: ${companyData.name}`;
+    if (companyData.name) prompt += `\n- Nome da empresa: ${companyData.name}`;
+    if (companyData.industry) prompt += `\n- Ramo/Nicho: ${companyData.industry}`;
     if (companyData.segment) prompt += `\n- Segmento: ${companyData.segment}`;
+    if (companyData.target_audience) prompt += `\n- Público-alvo: ${companyData.target_audience}`;
+    if (companyData.differentials) prompt += `\n- Diferenciais: ${companyData.differentials}`;
     if (companyData.mission) prompt += `\n- Missão: ${companyData.mission}`;
-    if (companyData.hours) prompt += `\n- Horário: ${companyData.hours}`;
-    if (companyData.address) prompt += `\n- Endereço: ${companyData.address}`;
-    if (companyData.payment) prompt += `\n- Formas de pagamento: ${companyData.payment}`;
-    if (companyData.policies) prompt += `\n- Políticas: ${companyData.policies}`;
+    if (companyData.business_hours || companyData.hours) prompt += `\n- Horário de atendimento: ${companyData.business_hours || companyData.hours}`;
+    if (companyData.location || companyData.address) prompt += `\n- Localização: ${companyData.location || companyData.address}`;
+    if (companyData.promotions) prompt += `\n- Promoções ativas: ${companyData.promotions}`;
+    if (companyData.vitrine_link) prompt += `\n- Link da vitrine: ${companyData.vitrine_link}`;
+    if (companyData.official_links) prompt += `\n- Links oficiais:\n${companyData.official_links}`;
+    if (companyData.additional_info) prompt += `\n- Instruções adicionais:\n${companyData.additional_info}`;
   }
 
-  // Add AI identity from memory config
-  if (aiMemory?.identity) {
-    const identity = aiMemory.identity;
-    prompt += `\n\n🤖 SUA IDENTIDADE:`;
-    if (identity.name) prompt += `\n- Seu nome: ${identity.name}`;
-    if (identity.tone) {
-      const tones: Record<string, string> = {
-        friendly: 'Amigável e acolhedor',
-        formal: 'Profissional e respeitoso',
-        casual: 'Descontraído e leve',
-        technical: 'Técnico e preciso'
-      };
-      prompt += `\n- Tom de voz: ${tones[identity.tone] || identity.tone}`;
-    }
-    if (identity.greeting) prompt += `\n- Saudação inicial: ${identity.greeting}`;
-    if (identity.farewell) prompt += `\n- Despedida: ${identity.farewell}`;
+  // Add policies from AI memory config
+  const policies = aiMemory?.policies;
+  if (policies) {
+    prompt += `\n\n📋 POLÍTICAS DA EMPRESA:`;
+    if (policies.delivery) prompt += `\n- Política de Entrega: ${policies.delivery}`;
+    if (policies.warranty) prompt += `\n- Política de Garantia: ${policies.warranty}`;
+    if (policies.exchange) prompt += `\n- Política de Trocas/Devoluções: ${policies.exchange}`;
+  }
+
+  // Add payment info from AI memory config
+  const payments = aiMemory?.payments;
+  if (payments) {
+    prompt += `\n\n💳 FORMAS DE PAGAMENTO:`;
+    if (payments.methods) prompt += `\n- Métodos aceitos: ${payments.methods}`;
+    if (payments.fees) prompt += `\n- Taxas e prazos: ${payments.fees}`;
   }
 
   // Add behavior rules from ai_behavior_rules OR from AI memory config
-  const rules = behaviorRules || aiMemory?.behavior?.rules || aiMemory?.behavior?.custom_rules;
+  const rules = behaviorRules || behavior?.custom_rules || behavior?.rules;
   if (rules) {
-    prompt += `\n\n📋 REGRAS DE COMPORTAMENTO:\n${rules}`;
+    prompt += `\n\n📋 REGRAS DE COMPORTAMENTO CUSTOMIZADAS:\n${rules}`;
   }
 
   // Add product catalog summary

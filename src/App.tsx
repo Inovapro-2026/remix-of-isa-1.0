@@ -16,6 +16,9 @@ import RenovarPlano from "./pages/RenovarPlano";
 
 // Admin Dashboard Pages
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
+import AdminVendas from "./pages/dashboard/AdminVendas";
+import AdminClientes from "./pages/dashboard/AdminClientes";
+import AdminVitrines from "./pages/dashboard/AdminVitrines";
 import MeuWhatsApp from "./pages/dashboard/MeuWhatsApp";
 import MemoriaIA from "./pages/dashboard/MemoriaIA";
 import AdminPlanos from "./pages/dashboard/AdminPlanos";
@@ -128,6 +131,21 @@ const App = () => (
             <Route path="/admin/saques" element={
               <ProtectedRoute requireAdmin>
                 <AdminSaques />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/vendas" element={
+              <ProtectedRoute requireAdmin>
+                <AdminVendas />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/clientes" element={
+              <ProtectedRoute requireAdmin>
+                <AdminClientes />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/vitrines" element={
+              <ProtectedRoute requireAdmin>
+                <AdminVitrines />
               </ProtectedRoute>
             } />
 

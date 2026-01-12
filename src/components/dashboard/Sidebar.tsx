@@ -34,11 +34,13 @@ interface SidebarProps {
 
 const adminMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard/admin" },
+  { icon: ShoppingCart, label: "Vendas", path: "/admin/vendas" },
+  { icon: Users, label: "Clientes", path: "/admin/clientes" },
+  { icon: Store, label: "Vitrines", path: "/admin/vitrines" },
   { icon: FileText, label: "Solicitações", path: "/requests" },
-  { icon: Users, label: "Clientes", path: "/clients" },
   { icon: CreditCard, label: "Planos", path: "/admin/planos" },
-  { icon: Wallet, label: "Saques & Finanças", path: "/admin/saques" },
-  { icon: FolderOpen, label: "Sala de Controle", path: "/dashboard/control-room" },
+  { icon: Wallet, label: "Saques", path: "/admin/saques" },
+  { icon: FolderOpen, label: "Controle", path: "/dashboard/control-room" },
   { icon: HeadphonesIcon, label: "Suporte", path: "/support" },
   { icon: BarChart3, label: "Relatórios", path: "/reports" },
   { icon: Settings, label: "Configurações", path: "/settings" },

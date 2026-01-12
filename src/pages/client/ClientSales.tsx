@@ -9,7 +9,8 @@ import {
   ShoppingCart, Package, User, Phone, Calendar, DollarSign, 
   Loader2, RefreshCw, Search, Eye, Copy, Check, ExternalLink,
   TrendingUp, Send, Clock, BarChart3, Award, Zap, MessageCircle,
-  ThumbsUp, Truck, CheckCircle, AlertCircle, Wallet, ArrowRight
+  ThumbsUp, Truck, CheckCircle, AlertCircle, Wallet, ArrowRight,
+  SkipForward, Trash2, Edit, X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -32,6 +33,13 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SaleItem {
   product_id: string;
@@ -85,6 +93,8 @@ const ORDER_STATUSES: Record<OrderWorkflowStatus, { label: string; color: string
   cancelled: { label: 'Cancelado', color: 'text-red-500', icon: AlertCircle, bgColor: 'bg-red-500/20' },
 };
 
+const WORKFLOW_ORDER: OrderWorkflowStatus[] = ['new', 'analyzing', 'delivering', 'completed'];
+
 const ClientSales = () => {
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -99,6 +109,13 @@ const ClientSales = () => {
   const [thankYouMessage, setThankYouMessage] = useState("");
   const [deliveryModal, setDeliveryModal] = useState<{ open: boolean; sale: Sale | null }>({ open: false, sale: null });
   const [actionLoading, setActionLoading] = useState(false);
+  
+  // New modal states
+  const [skipPhaseModal, setSkipPhaseModal] = useState<{ open: boolean; sale: Sale | null; nextStatus: OrderWorkflowStatus | null }>({ open: false, sale: null, nextStatus: null });
+  const [skipPhaseMessage, setSkipPhaseMessage] = useState("");
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; sale: Sale | null }>({ open: false, sale: null });
+  const [editModal, setEditModal] = useState<{ open: boolean; sale: Sale | null }>({ open: false, sale: null });
+  const [editData, setEditData] = useState({ customerName: "", customerPhone: "" });
 
   useEffect(() => {
     loadSales();
@@ -161,7 +178,6 @@ const ClientSales = () => {
       return 'completed';
     }
     if (sale.payment_status === 'approved') {
-      // Check if we've sent a thank you message (we'll track this via status field)
       if (sale.status === 'processing' || sale.status === 'analyzing') {
         return 'analyzing';
       }
@@ -176,6 +192,25 @@ const ClientSales = () => {
     return 'new';
   };
 
+  // Get next status in workflow
+  const getNextStatus = (currentStatus: OrderWorkflowStatus): OrderWorkflowStatus | null => {
+    const currentIndex = WORKFLOW_ORDER.indexOf(currentStatus);
+    if (currentIndex === -1 || currentIndex >= WORKFLOW_ORDER.length - 1) return null;
+    return WORKFLOW_ORDER[currentIndex + 1];
+  };
+
+  // Send WhatsApp message helper
+  const sendWhatsAppMessage = async (phone: string, message: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const formattedPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    
+    const { error } = await supabase.functions.invoke('whatsapp-proxy/send', {
+      body: { phone: formattedPhone, message }
+    });
+
+    if (error) throw error;
+  };
+
   // Send thank you message
   const handleThankCustomer = async () => {
     if (!thankYouModal.sale || !thankYouMessage.trim()) return;
@@ -183,19 +218,9 @@ const ClientSales = () => {
     setActionLoading(true);
     try {
       const sale = thankYouModal.sale;
-      const customerPhone = sale.customer_phone.replace(/\D/g, '');
       
-      // Send message via WhatsApp
-      const { error } = await supabase.functions.invoke('whatsapp-proxy/send', {
-        body: {
-          phone: customerPhone.startsWith('55') ? customerPhone : `55${customerPhone}`,
-          message: thankYouMessage,
-        }
-      });
+      await sendWhatsAppMessage(sale.customer_phone, thankYouMessage);
 
-      if (error) throw error;
-
-      // Update sale status
       await supabase
         .from('sales')
         .update({ status: 'analyzing' })
@@ -223,7 +248,6 @@ const ClientSales = () => {
       const customerPhone = sale.customer_phone.replace(/\D/g, '');
       const formattedPhone = customerPhone.startsWith('55') ? customerPhone : `55${customerPhone}`;
 
-      // Get product delivery info for each item
       for (const item of sale.items) {
         const { data: product } = await supabase
           .from('products')
@@ -260,13 +284,11 @@ const ClientSales = () => {
         }
       }
 
-      // Send thank you message
       const thankYouMsg = `✨ *Entrega Concluída!* ✨\n\nSeu produto foi entregue! Guarde as mensagens acima.\n\nObrigado pela preferência! 💚`;
       await supabase.functions.invoke('whatsapp-proxy/send', {
         body: { phone: formattedPhone, message: thankYouMsg }
       });
 
-      // Update sale status
       await supabase
         .from('sales')
         .update({ 
@@ -288,6 +310,126 @@ const ClientSales = () => {
     }
   };
 
+  // Skip to next phase with WhatsApp notification
+  const handleSkipPhase = async () => {
+    if (!skipPhaseModal.sale || !skipPhaseModal.nextStatus) return;
+    
+    setActionLoading(true);
+    try {
+      const sale = skipPhaseModal.sale;
+      const nextStatus = skipPhaseModal.nextStatus;
+      
+      // Send WhatsApp message if provided
+      if (skipPhaseMessage.trim()) {
+        await sendWhatsAppMessage(sale.customer_phone, skipPhaseMessage);
+      }
+
+      // Update sale status
+      const updateData: any = { status: nextStatus };
+      
+      if (nextStatus === 'completed') {
+        updateData.delivery_status = 'sent';
+        updateData.delivery_sent_at = new Date().toISOString();
+      }
+
+      await supabase
+        .from('sales')
+        .update(updateData)
+        .eq('id', sale.id);
+
+      const statusLabel = ORDER_STATUSES[nextStatus].label;
+      toast.success(`Pedido movido para: ${statusLabel}`);
+      setSkipPhaseModal({ open: false, sale: null, nextStatus: null });
+      setSkipPhaseMessage("");
+      loadSales();
+      
+      if (nextStatus === 'completed') {
+        loadBalance();
+      }
+    } catch (error) {
+      console.error('Error skipping phase:', error);
+      toast.error('Erro ao avançar fase');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Delete sale
+  const handleDeleteSale = async () => {
+    if (!deleteModal.sale) return;
+    
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .delete()
+        .eq('id', deleteModal.sale.id);
+
+      if (error) throw error;
+
+      toast.success('Venda excluída com sucesso!');
+      setDeleteModal({ open: false, sale: null });
+      setSelectedSale(null);
+      loadSales();
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      toast.error('Erro ao excluir venda');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Edit sale
+  const handleEditSale = async () => {
+    if (!editModal.sale) return;
+    
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({
+          customer_name: editData.customerName,
+          customer_phone: editData.customerPhone.replace(/\D/g, '')
+        })
+        .eq('id', editModal.sale.id);
+
+      if (error) throw error;
+
+      toast.success('Venda atualizada com sucesso!');
+      setEditModal({ open: false, sale: null });
+      loadSales();
+    } catch (error) {
+      console.error('Error editing sale:', error);
+      toast.error('Erro ao editar venda');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Open skip phase modal
+  const openSkipPhaseModal = (sale: Sale) => {
+    const currentStatus = getWorkflowStatus(sale);
+    const nextStatus = getNextStatus(currentStatus);
+    
+    if (!nextStatus) {
+      toast.info('Este pedido já está na última fase');
+      return;
+    }
+
+    const statusLabel = ORDER_STATUSES[nextStatus].label;
+    setSkipPhaseMessage(`Olá${sale.customer_name ? ` ${sale.customer_name}` : ''}! 📦\n\nSeu pedido foi atualizado para: *${statusLabel}*\n\nQualquer dúvida, estamos à disposição!`);
+    setSkipPhaseModal({ open: true, sale, nextStatus });
+  };
+
+  // Open edit modal
+  const openEditModal = (sale: Sale) => {
+    setEditData({
+      customerName: sale.customer_name || '',
+      customerPhone: formatPhone(sale.customer_phone)
+    });
+    setEditModal({ open: true, sale });
+  };
+
   // Calculate statistics
   const stats = useMemo(() => {
     const approvedSales = sales.filter(s => s.payment_status === 'approved');
@@ -297,17 +439,14 @@ const ClientSales = () => {
     
     const totalRevenue = approvedSales.reduce((sum, s) => sum + s.seller_amount, 0);
     
-    // Today's stats
     const today = new Date().toISOString().split('T')[0];
     const todaySales = approvedSales.filter(s => s.paid_at?.startsWith(today));
     const todayRevenue = todaySales.reduce((sum, s) => sum + s.seller_amount, 0);
 
-    // This month
     const thisMonth = new Date().toISOString().slice(0, 7);
     const monthSales = approvedSales.filter(s => s.paid_at?.startsWith(thisMonth));
     const monthRevenue = monthSales.reduce((sum, s) => sum + s.seller_amount, 0);
 
-    // Top products
     const productMap = new Map<string, ProductStats>();
     approvedSales.forEach(sale => {
       sale.items.forEach(item => {
@@ -359,6 +498,9 @@ const ClientSales = () => {
     if (cleaned.length === 11) {
       return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
     }
+    if (cleaned.length === 13 && cleaned.startsWith('55')) {
+      return `(${cleaned.slice(2, 4)}) ${cleaned.slice(4, 9)}-${cleaned.slice(9)}`;
+    }
     return phone;
   };
 
@@ -406,6 +548,7 @@ const ClientSales = () => {
     const status = getWorkflowStatus(sale);
     const statusInfo = ORDER_STATUSES[status];
     const StatusIcon = statusInfo.icon;
+    const nextStatus = getNextStatus(status);
 
     return (
       <Card 
@@ -423,7 +566,44 @@ const ClientSales = () => {
                 {statusInfo.label}
               </Badge>
             </div>
-            <span className="text-gray-500 text-xs">{formatDate(sale.created_at)}</span>
+            
+            {/* Actions Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white">
+                  <span className="sr-only">Ações</span>
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  </svg>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-[#1A1A1A] border-gray-700">
+                {nextStatus && status !== 'cancelled' && (
+                  <DropdownMenuItem 
+                    onClick={(e) => { e.stopPropagation(); openSkipPhaseModal(sale); }}
+                    className="text-blue-400 focus:text-blue-300"
+                  >
+                    <SkipForward className="h-4 w-4 mr-2" />
+                    Pular para: {ORDER_STATUSES[nextStatus].label}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem 
+                  onClick={(e) => { e.stopPropagation(); openEditModal(sale); }}
+                  className="text-yellow-400 focus:text-yellow-300"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-gray-700" />
+                <DropdownMenuItem 
+                  onClick={(e) => { e.stopPropagation(); setDeleteModal({ open: true, sale }); }}
+                  className="text-red-400 focus:text-red-300"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="space-y-2">
@@ -449,12 +629,17 @@ const ClientSales = () => {
                 {sale.items.length} item(s)
               </span>
             </div>
+            
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-500" />
+              <span className="text-gray-500 text-xs">{formatDate(sale.created_at)}</span>
+            </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-gray-800 flex items-center justify-between">
             <span className="text-green-400 font-bold text-lg">{formatCurrency(sale.total)}</span>
             
-            {/* Action Buttons */}
+            {/* Quick Action Buttons */}
             <div className="flex gap-2" onClick={e => e.stopPropagation()}>
               {status === 'new' && sale.payment_status === 'approved' && (
                 <Button
@@ -478,6 +663,17 @@ const ClientSales = () => {
                 >
                   <Send className="h-4 w-4 mr-1" />
                   Entregar
+                </Button>
+              )}
+              
+              {nextStatus && status !== 'cancelled' && status !== 'completed' && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openSkipPhaseModal(sale)}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  <SkipForward className="h-4 w-4" />
                 </Button>
               )}
               
@@ -880,14 +1076,32 @@ const ClientSales = () => {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setSelectedSale(sale)}
-                                  className="text-gray-400 hover:text-white"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelectedSale(sale)}
+                                    className="text-gray-400 hover:text-white h-8 w-8 p-0"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openEditModal(sale)}
+                                    className="text-yellow-400 hover:text-yellow-300 h-8 w-8 p-0"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeleteModal({ open: true, sale })}
+                                    className="text-red-400 hover:text-red-300 h-8 w-8 p-0"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
@@ -1020,6 +1234,184 @@ const ClientSales = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Skip Phase Modal */}
+      <Dialog open={skipPhaseModal.open} onOpenChange={(open) => !actionLoading && setSkipPhaseModal({ open, sale: open ? skipPhaseModal.sale : null, nextStatus: open ? skipPhaseModal.nextStatus : null })}>
+        <DialogContent className="bg-[#1A1A1A] border-gray-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SkipForward className="h-5 w-5 text-blue-500" />
+              Avançar para Próxima Fase
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {skipPhaseModal.nextStatus && (
+                <>Mover pedido para: <span className="font-semibold text-white">{ORDER_STATUSES[skipPhaseModal.nextStatus].label}</span></>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-gray-800/50 rounded-lg p-4">
+              <p className="text-sm text-gray-400 mb-1">Cliente:</p>
+              <p className="text-white font-medium flex items-center gap-2">
+                <Phone className="h-4 w-4 text-green-500" />
+                {skipPhaseModal.sale && formatPhone(skipPhaseModal.sale.customer_phone)}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-400">Mensagem WhatsApp (opcional)</Label>
+              <Textarea
+                value={skipPhaseMessage}
+                onChange={(e) => setSkipPhaseMessage(e.target.value)}
+                placeholder="Digite uma mensagem para enviar ao cliente..."
+                className="bg-gray-800 border-gray-700 text-white min-h-[120px]"
+              />
+              <p className="text-xs text-gray-500">Deixe em branco para avançar sem enviar mensagem</p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSkipPhaseModal({ open: false, sale: null, nextStatus: null })}
+              disabled={actionLoading}
+              className="border-gray-700"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSkipPhase}
+              disabled={actionLoading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {actionLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <SkipForward className="h-4 w-4 mr-2" />
+              )}
+              {skipPhaseMessage.trim() ? 'Avançar e Enviar' : 'Avançar Fase'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={deleteModal.open} onOpenChange={(open) => !actionLoading && setDeleteModal({ open, sale: open ? deleteModal.sale : null })}>
+        <DialogContent className="bg-[#1A1A1A] border-gray-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-500">
+              <Trash2 className="h-5 w-5" />
+              Excluir Venda
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Esta ação não pode ser desfeita. A venda será permanentemente excluída.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {deleteModal.sale && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+              <p className="text-sm text-gray-400 mb-2">Venda:</p>
+              <p className="text-white font-medium">{deleteModal.sale.customer_name || 'Cliente'}</p>
+              <p className="text-gray-400 text-sm">{formatPhone(deleteModal.sale.customer_phone)}</p>
+              <p className="text-green-400 font-bold mt-2">{formatCurrency(deleteModal.sale.total)}</p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteModal({ open: false, sale: null })}
+              disabled={actionLoading}
+              className="border-gray-700"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleDeleteSale}
+              disabled={actionLoading}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {actionLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Excluir Permanentemente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Sale Modal */}
+      <Dialog open={editModal.open} onOpenChange={(open) => !actionLoading && setEditModal({ open, sale: open ? editModal.sale : null })}>
+        <DialogContent className="bg-[#1A1A1A] border-gray-800 text-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5 text-yellow-500" />
+              Editar Venda
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Altere as informações do cliente
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-gray-400">Nome do Cliente</Label>
+              <Input
+                value={editData.customerName}
+                onChange={(e) => setEditData({ ...editData, customerName: e.target.value })}
+                placeholder="Nome do cliente"
+                className="bg-gray-800 border-gray-700 text-white"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-400">WhatsApp</Label>
+              <Input
+                value={editData.customerPhone}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+                  let formatted = digits;
+                  if (digits.length > 2) {
+                    formatted = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+                  }
+                  if (digits.length > 7) {
+                    formatted = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+                  }
+                  setEditData({ ...editData, customerPhone: formatted });
+                }}
+                placeholder="(00) 00000-0000"
+                className="bg-gray-800 border-gray-700 text-white"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditModal({ open: false, sale: null })}
+              disabled={actionLoading}
+              className="border-gray-700"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleEditSale}
+              disabled={actionLoading}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              {actionLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Check className="h-4 w-4 mr-2" />
+              )}
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Sale Details Dialog */}
       <Dialog open={!!selectedSale} onOpenChange={() => setSelectedSale(null)}>
         <DialogContent className="bg-[#1A1A1A] border-gray-800 text-white max-w-2xl">
@@ -1034,18 +1426,45 @@ const ClientSales = () => {
             <ScrollArea className="max-h-[70vh]">
               <div className="space-y-6 pr-4">
                 {/* Status */}
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const status = getWorkflowStatus(selectedSale);
-                    const statusInfo = ORDER_STATUSES[status];
-                    const StatusIcon = statusInfo.icon;
-                    return (
-                      <Badge className={`${statusInfo.bgColor} ${statusInfo.color} border-none text-sm px-4 py-2`}>
-                        <StatusIcon className="h-4 w-4 mr-2" />
-                        {statusInfo.label}
-                      </Badge>
-                    );
-                  })()}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const status = getWorkflowStatus(selectedSale);
+                      const statusInfo = ORDER_STATUSES[status];
+                      const StatusIcon = statusInfo.icon;
+                      return (
+                        <Badge className={`${statusInfo.bgColor} ${statusInfo.color} border-none text-sm px-4 py-2`}>
+                          <StatusIcon className="h-4 w-4 mr-2" />
+                          {statusInfo.label}
+                        </Badge>
+                      );
+                    })()}
+                  </div>
+                  
+                  {/* Quick Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditModal(selectedSale)}
+                      className="border-yellow-600 text-yellow-500 hover:bg-yellow-600/20"
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedSale(null);
+                        setDeleteModal({ open: true, sale: selectedSale });
+                      }}
+                      className="border-red-600 text-red-500 hover:bg-red-600/20"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Excluir
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Order Info */}
@@ -1143,9 +1562,9 @@ const ClientSales = () => {
                 </div>
 
                 {/* Actions */}
-                {getWorkflowStatus(selectedSale) !== 'completed' && selectedSale.payment_status === 'approved' && (
+                {getWorkflowStatus(selectedSale) !== 'completed' && getWorkflowStatus(selectedSale) !== 'cancelled' && (
                   <div className="flex gap-3">
-                    {getWorkflowStatus(selectedSale) === 'new' && (
+                    {getWorkflowStatus(selectedSale) === 'new' && selectedSale.payment_status === 'approved' && (
                       <Button
                         onClick={() => {
                           setSelectedSale(null);
@@ -1158,16 +1577,31 @@ const ClientSales = () => {
                         Agradecer
                       </Button>
                     )}
-                    <Button
-                      onClick={() => {
-                        setSelectedSale(null);
-                        setDeliveryModal({ open: true, sale: selectedSale });
-                      }}
-                      className="flex-1 bg-purple-600 hover:bg-purple-700"
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Entregar Produto
-                    </Button>
+                    {selectedSale.payment_status === 'approved' && (
+                      <Button
+                        onClick={() => {
+                          setSelectedSale(null);
+                          setDeliveryModal({ open: true, sale: selectedSale });
+                        }}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Entregar
+                      </Button>
+                    )}
+                    {getNextStatus(getWorkflowStatus(selectedSale)) && (
+                      <Button
+                        onClick={() => {
+                          setSelectedSale(null);
+                          openSkipPhaseModal(selectedSale);
+                        }}
+                        variant="outline"
+                        className="flex-1 border-blue-600 text-blue-400 hover:bg-blue-600/20"
+                      >
+                        <SkipForward className="h-4 w-4 mr-2" />
+                        Pular Fase
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

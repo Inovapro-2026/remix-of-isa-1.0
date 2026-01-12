@@ -17,7 +17,8 @@ import {
   Copy,
   Check,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +47,14 @@ interface CustomerData {
   email: string;
   phone: string;
   cpf: string;
+}
+
+interface CardData {
+  number: string;
+  name: string;
+  expiry: string;
+  cvv: string;
+  installments: number;
 }
 
 interface ShoppingCartProps {
@@ -84,12 +93,19 @@ export const ShoppingCart = ({
     phone: "",
     cpf: "",
   });
+  const [cardData, setCardData] = useState<CardData>({
+    number: "",
+    name: "",
+    expiry: "",
+    cvv: "",
+    installments: 1,
+  });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
-  const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
+  const [step, setStep] = useState<"cart" | "checkout" | "card_form" | "payment">("cart");
   const [copied, setCopied] = useState(false);
-  const [timeLeft, setTimeLeft] = useState<number>(30 * 60); // 30 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState<number>(30 * 60);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -110,6 +126,19 @@ export const ShoppingCart = ({
     if (digits.length <= 2) return digits;
     if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const formatCardNumber = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+  };
+
+  const formatExpiry = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 4);
+    if (digits.length >= 2) {
+      return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    }
+    return digits;
   };
 
   const formatTime = (seconds: number) => {
@@ -160,8 +189,45 @@ export const ShoppingCart = ({
     return true;
   };
 
-  const handleCheckout = async () => {
+  const validateCardForm = (): boolean => {
+    const cardNumber = cardData.number.replace(/\D/g, "");
+    if (cardNumber.length < 13 || cardNumber.length > 16) {
+      toast.error("Número do cartão inválido");
+      return false;
+    }
+    if (!cardData.name.trim() || cardData.name.trim().split(" ").length < 2) {
+      toast.error("Informe o nome completo como no cartão");
+      return false;
+    }
+    const expiry = cardData.expiry.replace(/\D/g, "");
+    if (expiry.length !== 4) {
+      toast.error("Validade inválida (MM/AA)");
+      return false;
+    }
+    const month = parseInt(expiry.slice(0, 2));
+    if (month < 1 || month > 12) {
+      toast.error("Mês de validade inválido");
+      return false;
+    }
+    if (cardData.cvv.length < 3 || cardData.cvv.length > 4) {
+      toast.error("CVV inválido");
+      return false;
+    }
+    return true;
+  };
+
+  const handleProceedToPayment = () => {
     if (!validateForm()) return;
+    
+    if (paymentMethod === "credit_card" || paymentMethod === "debit_card") {
+      setStep("card_form");
+    } else {
+      handleCheckout();
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (step === "card_form" && !validateCardForm()) return;
 
     setIsCheckingOut(true);
     setPaymentError(null);
@@ -177,17 +243,31 @@ export const ShoppingCart = ({
 
       const customerName = `${customer.firstName} ${customer.lastName}`;
 
+      const requestBody: any = {
+        matricula,
+        customer_phone: customer.phone.replace(/\D/g, ""),
+        customer_name: customerName,
+        customer_email: customer.email,
+        customer_cpf: customer.cpf.replace(/\D/g, ""),
+        payment_method: paymentMethod,
+        items: cartItems,
+        total,
+      };
+
+      // Add card data for credit/debit card payments
+      if (paymentMethod === "credit_card" || paymentMethod === "debit_card") {
+        requestBody.card_data = {
+          number: cardData.number.replace(/\D/g, ""),
+          holder_name: cardData.name.toUpperCase(),
+          exp_month: cardData.expiry.replace(/\D/g, "").slice(0, 2),
+          exp_year: "20" + cardData.expiry.replace(/\D/g, "").slice(2),
+          cvv: cardData.cvv,
+          installments: paymentMethod === "credit_card" ? cardData.installments : 1,
+        };
+      }
+
       const { data, error } = await supabase.functions.invoke("isa-create-payment", {
-        body: {
-          matricula,
-          customer_phone: customer.phone.replace(/\D/g, ""),
-          customer_name: customerName,
-          customer_email: customer.email,
-          customer_cpf: customer.cpf.replace(/\D/g, ""),
-          payment_method: paymentMethod,
-          items: cartItems,
-          total,
-        },
+        body: requestBody,
       });
 
       console.log("[ShoppingCart] Payment response:", data);
@@ -202,7 +282,6 @@ export const ShoppingCart = ({
       }
 
       if (paymentMethod === "pix") {
-        // CRITICAL: Validate PIX data before showing modal
         const pixQrCode = data.payment?.pix_qr_code;
         const pixQrCodeBase64 = data.payment?.pix_qr_code_base64;
 
@@ -222,11 +301,22 @@ export const ShoppingCart = ({
         setTimeLeft(30 * 60);
         setStep("payment");
         toast.success("PIX gerado com sucesso!");
-      } else if ((paymentMethod === "credit_card" || paymentMethod === "debit_card") && data?.payment?.checkout_url) {
-        toast.success("Redirecionando para pagamento...");
-        window.open(data.payment.checkout_url, "_blank");
-        onClearCart();
-        onClose();
+      } else if ((paymentMethod === "credit_card" || paymentMethod === "debit_card")) {
+        // For card payments with direct processing
+        if (data.payment?.status === "approved") {
+          toast.success("Pagamento aprovado com sucesso!");
+          onClearCart();
+          onClose();
+        } else if (data?.payment?.checkout_url) {
+          toast.success("Redirecionando para pagamento...");
+          window.open(data.payment.checkout_url, "_blank");
+          onClearCart();
+          onClose();
+        } else {
+          toast.success("Pagamento processado! Aguarde a confirmação.");
+          onClearCart();
+          onClose();
+        }
       } else if (paymentMethod === "boleto" && data?.payment?.boleto_url) {
         toast.success("Boleto gerado!");
         window.open(data.payment.boleto_url, "_blank");
@@ -263,7 +353,6 @@ export const ShoppingCart = ({
       setTimeout(() => setCopied(false), 3000);
     } catch (err) {
       console.error("[ShoppingCart] Clipboard error:", err);
-      // Fallback: select text manually
       try {
         const textArea = document.createElement("textarea");
         textArea.value = pixCode;
@@ -289,7 +378,8 @@ export const ShoppingCart = ({
     { id: "boleto" as const, label: "Boleto", icon: Banknote, description: "Vence em 3 dias úteis" },
   ];
 
-  // Check if PIX data is valid
+  const installmentOptions = Array.from({ length: 12 }, (_, i) => i + 1);
+
   const hasValidPixData = paymentData?.qr_code && paymentData.qr_code.length > 10;
 
   if (items.length === 0 && step === "cart") {
@@ -331,12 +421,15 @@ export const ShoppingCart = ({
           <div className="flex items-center gap-3">
             {step === "payment" ? (
               <QrCode className="h-6 w-6 text-white" />
+            ) : step === "card_form" ? (
+              <CreditCard className="h-6 w-6 text-white" />
             ) : (
               <CartIcon className="h-6 w-6 text-white" />
             )}
             <h3 className="font-semibold text-white text-lg">
               {step === "cart" && "Meu Carrinho"}
               {step === "checkout" && "Finalizar Pedido"}
+              {step === "card_form" && (paymentMethod === "credit_card" ? "Cartão de Crédito" : "Cartão de Débito")}
               {step === "payment" && "Pagamento PIX"}
             </h3>
           </div>
@@ -405,7 +498,6 @@ export const ShoppingCart = ({
 
           {step === "checkout" && (
             <div className="space-y-5">
-              {/* Error Alert */}
               {paymentError && (
                 <div className="rounded-xl p-4 flex items-start gap-3" style={{ backgroundColor: "#EF444420", border: "1px solid #EF444440" }}>
                   <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
@@ -544,6 +636,108 @@ export const ShoppingCart = ({
             </div>
           )}
 
+          {/* Card Form Step */}
+          {step === "card_form" && (
+            <div className="space-y-5">
+              {paymentError && (
+                <div className="rounded-xl p-4 flex items-start gap-3" style={{ backgroundColor: "#EF444420", border: "1px solid #EF444440" }}>
+                  <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-red-500">Erro no pagamento</p>
+                    <p className="text-xs text-red-400 mt-1">{paymentError}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-xl p-4" style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}` }}>
+                <div className="flex items-center gap-2 mb-4">
+                  <Lock className="h-4 w-4 text-green-500" />
+                  <span className="text-xs" style={{ color: colors.muted }}>Pagamento 100% seguro</span>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-xs mb-1 block" style={{ color: colors.muted }}>Número do Cartão</Label>
+                    <Input
+                      value={cardData.number}
+                      onChange={(e) => setCardData({ ...cardData, number: formatCardNumber(e.target.value) })}
+                      placeholder="0000 0000 0000 0000"
+                      className="h-12 text-lg font-mono"
+                      style={{ backgroundColor: colors.background, borderColor: colors.border, color: colors.text }}
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs mb-1 block" style={{ color: colors.muted }}>Nome no Cartão</Label>
+                    <Input
+                      value={cardData.name}
+                      onChange={(e) => setCardData({ ...cardData, name: e.target.value.toUpperCase() })}
+                      placeholder="NOME COMO NO CARTÃO"
+                      className="h-10"
+                      style={{ backgroundColor: colors.background, borderColor: colors.border, color: colors.text }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs mb-1 block" style={{ color: colors.muted }}>Validade</Label>
+                      <Input
+                        value={cardData.expiry}
+                        onChange={(e) => setCardData({ ...cardData, expiry: formatExpiry(e.target.value) })}
+                        placeholder="MM/AA"
+                        className="h-10"
+                        style={{ backgroundColor: colors.background, borderColor: colors.border, color: colors.text }}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs mb-1 block" style={{ color: colors.muted }}>CVV</Label>
+                      <Input
+                        value={cardData.cvv}
+                        onChange={(e) => setCardData({ ...cardData, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+                        placeholder="123"
+                        type="password"
+                        className="h-10"
+                        style={{ backgroundColor: colors.background, borderColor: colors.border, color: colors.text }}
+                      />
+                    </div>
+                  </div>
+
+                  {paymentMethod === "credit_card" && (
+                    <div>
+                      <Label className="text-xs mb-1 block" style={{ color: colors.muted }}>Parcelas</Label>
+                      <select
+                        value={cardData.installments}
+                        onChange={(e) => setCardData({ ...cardData, installments: parseInt(e.target.value) })}
+                        className="w-full h-10 rounded-md border px-3"
+                        style={{ backgroundColor: colors.background, borderColor: colors.border, color: colors.text }}
+                      >
+                        {installmentOptions.map((n) => (
+                          <option key={n} value={n}>
+                            {n}x de {formatPrice(total / n)} {n === 1 ? "(à vista)" : "sem juros"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Summary */}
+              <div className="rounded-xl p-4" style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}` }}>
+                <h4 className="font-medium mb-3" style={{ color: colors.text }}>Resumo</h4>
+                <div className="flex justify-between font-semibold" style={{ color: colors.text }}>
+                  <span>Total</span>
+                  <span style={{ color: colors.accent }}>{formatPrice(total)}</span>
+                </div>
+                {paymentMethod === "credit_card" && cardData.installments > 1 && (
+                  <p className="text-xs mt-2" style={{ color: colors.muted }}>
+                    {cardData.installments}x de {formatPrice(total / cardData.installments)} sem juros
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {step === "payment" && (
             <div className="space-y-4 text-center">
               {/* Timer */}
@@ -572,7 +766,6 @@ export const ShoppingCart = ({
                     Escaneie o QR Code ou copie o código PIX
                   </p>
 
-                  {/* QR Code */}
                   {paymentData.qr_code_base64 ? (
                     <div className="bg-white p-4 rounded-xl inline-block mb-4 shadow-lg">
                       <img 
@@ -595,7 +788,6 @@ export const ShoppingCart = ({
                     </div>
                   )}
 
-                  {/* PIX Code Display */}
                   <div 
                     className="rounded-lg p-3 mb-4 text-left break-all font-mono text-xs"
                     style={{ 
@@ -607,7 +799,6 @@ export const ShoppingCart = ({
                     {paymentData.qr_code.substring(0, 80)}...
                   </div>
 
-                  {/* Copy Button */}
                   <Button 
                     onClick={copyPix} 
                     className="w-full h-12 text-base font-semibold" 
@@ -634,7 +825,6 @@ export const ShoppingCart = ({
                   </p>
                 </div>
               ) : (
-                /* Error state - no valid PIX data */
                 <div
                   className="rounded-xl p-6"
                   style={{ backgroundColor: "#EF444410", border: "1px solid #EF444430" }}
@@ -660,7 +850,6 @@ export const ShoppingCart = ({
                 </div>
               )}
 
-              {/* Success message */}
               {hasValidPixData && (
                 <div className="rounded-xl p-4" style={{ backgroundColor: "#22C55E20", border: "1px solid #22C55E40" }}>
                   <p className="text-sm font-medium text-green-500">
@@ -700,7 +889,7 @@ export const ShoppingCart = ({
                 Voltar
               </Button>
               <Button
-                onClick={handleCheckout}
+                onClick={handleProceedToPayment}
                 disabled={isCheckingOut}
                 className="flex-1"
                 style={{ backgroundColor: "#22C55E", color: "#fff" }}
@@ -709,8 +898,33 @@ export const ShoppingCart = ({
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : paymentMethod === "pix" ? (
                   "Gerar PIX"
+                ) : paymentMethod === "credit_card" || paymentMethod === "debit_card" ? (
+                  "Continuar"
                 ) : (
                   "Confirmar Pedido"
+                )}
+              </Button>
+            </div>
+          )}
+
+          {step === "card_form" && (
+            <div className="flex gap-3">
+              <Button onClick={() => setStep("checkout")} variant="outline" className="flex-1">
+                Voltar
+              </Button>
+              <Button
+                onClick={handleCheckout}
+                disabled={isCheckingOut}
+                className="flex-1"
+                style={{ backgroundColor: "#22C55E", color: "#fff" }}
+              >
+                {isCheckingOut ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Pagar {formatPrice(total)}
+                  </>
                 )}
               </Button>
             </div>

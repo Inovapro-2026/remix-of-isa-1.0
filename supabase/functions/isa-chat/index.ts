@@ -386,14 +386,51 @@ ${firstInteraction.message_prompt}`;
       });
     });
     
-    prompt += `\n💡 INSTRUÇÕES DE FORMATAÇÃO PARA LISTAS:
-- Ao listar produtos, apresente cada um em linhas separadas
-- Use emojis para organizar visualmente (🛒 produto, 💰 preço, 📋 código)
-- NUNCA liste códigos separados por vírgula
-- Sempre formate de forma clara e organizada
-- Quando o cliente pedir uma lista, envie cada produto em bloco separado`;
+    prompt += `
+
+📝 INSTRUÇÕES CRÍTICAS DE FORMATAÇÃO PARA WHATSAPP:
+
+1. FORMATO OBRIGATÓRIO PARA CADA PRODUTO:
+   Use EXATAMENTE este formato (cada item em linha separada):
+   
+   🛒 *Nome do Produto*
+   📋 Código: XXXXXX
+   💰 Preço: R$ XX,XX
+   📝 Descrição do produto
+   
+   (linha em branco entre produtos)
+
+2. REGRAS DE FORMATAÇÃO:
+   - NUNCA coloque o código entre parênteses ao lado do nome
+   - NUNCA use formato "(CODIGO)" - sempre "Código: XXXXXX"
+   - Cada informação DEVE estar em sua própria linha
+   - Use uma linha em branco entre cada produto
+   - Use *asteriscos* para negrito no nome
+
+3. LINKS DA VITRINE:
+   - NUNCA use formato markdown [texto](url)
+   - Escreva: "Acesse nossa vitrine: " seguido da URL completa
+   - O link deve ficar sozinho, sem colchetes
+
+4. EXEMPLO CORRETO:
+   
+   🛒 *Frango Parmegiana*
+   📋 Código: LAN003
+   💰 Preço: R$ 16,00
+   📝 Acompanha arroz e fritas
+   
+   🛒 *Bife de Alcatra*
+   📋 Código: LAN002
+   💰 Preço: R$ 18,00
+   📝 Arroz, feijão e fritas
+   
+   Acesse nossa vitrine: https://exemplo.com/vitrine/123
+
+5. EXEMPLO INCORRETO (NÃO FAÇA ISSO):
+   - *Frango Parmegiana (LAN003)*: R$ 16,00
+   - [Vitrine Virtual](https://...)`;
     
-    prompt += `\n\n💡 Quando o cliente enviar um código de 6 caracteres, busque o produto correspondente e apresente as informações detalhadas.`;
+    prompt += `\n\n💡 Quando o cliente enviar um código de 6 caracteres, busque o produto correspondente e apresente no formato acima.`;
   } else {
     prompt += `\n\n📦 PRODUTOS: Nenhum produto cadastrado ainda.`;
   }
@@ -402,7 +439,8 @@ ${firstInteraction.message_prompt}`;
 - Se o cliente perguntar algo que você não sabe, diga que vai verificar com a equipe
 - Nunca invente informações sobre produtos que não estão no catálogo
 - Se um código de produto não for encontrado, informe gentilmente
-- Ao listar múltiplos produtos, SEMPRE use formato organizado com quebras de linha`;
+- Ao listar múltiplos produtos, SEMPRE use o formato organizado com cada info em linha separada
+- NUNCA use links em formato markdown - sempre texto simples com a URL`;
 
   return { prompt, welcomeMedia };
 }

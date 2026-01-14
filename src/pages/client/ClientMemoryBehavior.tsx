@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { 
   FileText, Save, Loader2, Building2, User, MapPin, Clock, Megaphone, 
   Info, Phone, Link2, Copy as CopyIcon, CreditCard, Truck, Shield, 
-  RefreshCw, Wallet, DollarSign, MessageSquare, Image, Video, Upload, X
+  RefreshCw, Wallet, DollarSign, MessageSquare, Image, Video, Upload, X,
+  PlayCircle, Eye
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,6 +35,9 @@ const ClientMemoryBehavior = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ message: string; media?: { url: string; type: string } } | null>(null);
+  const [showTestModal, setShowTestModal] = useState(false);
 
   // Phone Number Dialog State
   const [showPhoneDialog, setShowPhoneDialog] = useState(false);
@@ -405,6 +409,38 @@ const ClientMemoryBehavior = () => {
     }
   };
 
+  const handleTestFirstMessage = async () => {
+    setTesting(true);
+    setTestResult(null);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Call isa-chat function with isFirstInteraction flag
+      const { data, error } = await supabase.functions.invoke('isa-chat', {
+        body: {
+          messages: [{ role: 'user', content: 'oi' }],
+          userId: user.id,
+          isFirstInteraction: true
+        }
+      });
+
+      if (error) throw error;
+
+      setTestResult({
+        message: data.message || 'Nenhuma mensagem retornada',
+        media: data.welcomeMedia || undefined
+      });
+      setShowTestModal(true);
+    } catch (error) {
+      console.error('Test error:', error);
+      toast.error("Erro ao testar. Verifique se salvou as configurações.");
+    } finally {
+      setTesting(false);
+    }
+  };
+
   if (loading || rulesLoading) {
     return (
       <DashboardLayout isAdmin={false}>
@@ -541,9 +577,26 @@ Eu sou a ISA, sua assistente virtual aqui na Loja XYZ! 🛍️
 Como posso te ajudar hoje?"
                     className="bg-[#0D0D0D] border-gray-700 text-white min-h-[200px] text-sm"
                   />
-                  <p className="text-xs text-gray-500">
-                    ⚠️ Este texto será enviado exatamente como você digitar. Use emojis e quebras de linha para deixar a mensagem bonita no WhatsApp.
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500">
+                      ⚠️ Este texto será enviado exatamente como você digitar.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestFirstMessage}
+                      disabled={testing}
+                      className="border-green-600 text-green-400 hover:bg-green-600/20"
+                    >
+                      {testing ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <PlayCircle className="h-4 w-4 mr-2" />
+                      )}
+                      Testar Agora
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1053,6 +1106,62 @@ Exemplo:
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Result Modal */}
+      <Dialog open={showTestModal} onOpenChange={setShowTestModal}>
+        <DialogContent className="bg-[#1A1A1A] border-gray-800 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Eye className="h-5 w-5 text-green-500" />
+              Prévia da Mensagem no WhatsApp
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Esta é exatamente a mensagem que será enviada na primeira interação:
+            </DialogDescription>
+          </DialogHeader>
+          
+          {testResult && (
+            <div className="space-y-4">
+              {/* WhatsApp-like message preview */}
+              <div className="bg-[#0D0D0D] rounded-lg p-4 border border-gray-700">
+                {testResult.media && (
+                  <div className="mb-3">
+                    {testResult.media.type === 'video' ? (
+                      <video
+                        src={testResult.media.url}
+                        controls
+                        className="w-full max-h-48 rounded-lg object-contain bg-black"
+                      />
+                    ) : (
+                      <img
+                        src={testResult.media.url}
+                        alt="Mídia de boas-vindas"
+                        className="w-full max-h-48 rounded-lg object-contain bg-black"
+                      />
+                    )}
+                  </div>
+                )}
+                <div className="bg-[#075E54] rounded-lg p-3 text-white whitespace-pre-wrap text-sm">
+                  {testResult.message}
+                </div>
+              </div>
+              
+              <div className="text-xs text-gray-500">
+                💡 Esta mensagem será enviada automaticamente na primeira interação ou após 30 minutos de inatividade.
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button
+              onClick={() => setShowTestModal(false)}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Entendi
             </Button>
           </DialogFooter>
         </DialogContent>

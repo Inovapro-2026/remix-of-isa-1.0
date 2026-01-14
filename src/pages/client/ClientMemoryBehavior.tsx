@@ -39,10 +39,6 @@ const ClientMemoryBehavior = () => {
   const [testResult, setTestResult] = useState<{ message: string; media?: { url: string; type: string } } | null>(null);
   const [showTestModal, setShowTestModal] = useState(false);
 
-  // Phone Number Dialog State
-  const [showPhoneDialog, setShowPhoneDialog] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [tempConfigPayload, setTempConfigPayload] = useState<any>(null);
 
   // Form State - Extended with marketplace fields
   const [formData, setFormData] = useState({
@@ -233,20 +229,6 @@ const ClientMemoryBehavior = () => {
 
       await saveRules(formData.behavior_custom_rules, "");
 
-      // Check if phone number is already saved in localStorage
-      const savedPhone = localStorage.getItem('isa_memory_phone');
-
-      if (!savedPhone) {
-        // Show dialog to ask for phone number
-        setTempConfigPayload(configPayload);
-        setShowPhoneDialog(true);
-        setSaving(false);
-        return;
-      }
-
-      // If phone exists, sync directly
-      await syncToLocalMemory(savedPhone, configPayload);
-
       toast.success("Memória da IA atualizada com sucesso!");
 
     } catch (error) {
@@ -254,45 +236,6 @@ const ClientMemoryBehavior = () => {
       toast.error("Erro ao salvar configurações.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handlePhoneSubmit = async () => {
-    const cleanPhone = phoneNumber.replace(/\D/g, '');
-
-    if (cleanPhone.length < 10) {
-      toast.error("Digite um número de telefone válido (mínimo 10 dígitos)");
-      return;
-    }
-
-    // Save to localStorage (one-time)
-    localStorage.setItem('isa_memory_phone', cleanPhone);
-
-    // Sync to local memory
-    await syncToLocalMemory(cleanPhone, tempConfigPayload);
-
-    setShowPhoneDialog(false);
-    setPhoneNumber("");
-    setTempConfigPayload(null);
-
-    toast.success("Memória da IA atualizada com sucesso!");
-  };
-
-  const syncToLocalMemory = async (phone: string, config: any) => {
-    try {
-      const response = await fetch(`/api/whatsapp/${phone}/save-memory`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config })
-      });
-
-      if (!response.ok) {
-        console.warn('[ClientMemoryBehavior] Failed to sync to local SQLite');
-      } else {
-        console.log('[ClientMemoryBehavior] ✅ Synced to local SQLite');
-      }
-    } catch (e) {
-      console.error('[ClientMemoryBehavior] Error syncing to local:', e);
     }
   };
 
@@ -1066,50 +1009,6 @@ Exemplo:
         </div>
       </div>
 
-      {/* Phone Number Dialog */}
-      <Dialog open={showPhoneDialog} onOpenChange={setShowPhoneDialog}>
-        <DialogContent className="bg-[#1A1A1A] border-gray-800 text-white">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-blue-500" />
-              Configure seu Número de Telefone
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Digite o número de telefone que será usado para criar a memória local da IA.
-              Esta ação é feita apenas uma vez.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="phone" className="text-gray-300">Número de Telefone</Label>
-            <Input
-              id="phone"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Ex: 11999999999"
-              className="bg-[#0D0D0D] border-gray-700 text-white mt-2"
-              maxLength={15}
-            />
-            <p className="text-xs text-gray-500 mt-2">
-              Digite apenas números (DDD + número). Mínimo 10 dígitos.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowPhoneDialog(false)}
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handlePhoneSubmit}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Confirmar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Test Result Modal */}
       <Dialog open={showTestModal} onOpenChange={setShowTestModal}>

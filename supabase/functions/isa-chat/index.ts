@@ -239,17 +239,22 @@ function formatPrice(price: number): string {
   return `R$ ${price.toFixed(2).replace('.', ',')}`;
 }
 
-// Format products for prompt
+// Format products for prompt - organized list for WhatsApp
 function formatProductsForPrompt(products: any[], title: string): string {
   if (products.length === 0) return '';
   
-  let formatted = `\n\n${title}:`;
+  let formatted = `\n\n*${title}*\n`;
+  formatted += `━━━━━━━━━━━━━━━━━━━━`;
+  
   products.forEach((product, index) => {
-    formatted += `\n${index + 1}. **${product.name}** (Código: ${product.code})`;
-    formatted += `\n   💰 ${formatPrice(product.price)}`;
-    if (product.category) formatted += ` | 📁 ${product.category}`;
+    formatted += `\n\n🛒 *${index + 1}. ${product.name}*`;
+    formatted += `\n   📋 Código: \`${product.code}\``;
+    formatted += `\n   💰 Preço: *${formatPrice(product.price)}*`;
+    if (product.category) formatted += `\n   📁 Categoria: ${product.category}`;
     if (product.description) formatted += `\n   📝 ${product.description}`;
   });
+  
+  formatted += `\n\n━━━━━━━━━━━━━━━━━━━━`;
   
   return formatted;
 }
@@ -350,14 +355,25 @@ async function buildSystemPrompt(userId: string, allProducts: any[]): Promise<st
     });
     
     categories.forEach((prods, cat) => {
-      prompt += `\n\n📁 ${cat}:`;
+      prompt += `\n\n📁 *${cat}*`;
+      prompt += `\n━━━━━━━━━━━━━━━━`;
       prods.forEach(p => {
-        prompt += `\n  • ${p.name} (${p.code}) - ${formatPrice(p.price)}`;
+        prompt += `\n• *${p.name}*`;
+        prompt += `\n  📋 Código: ${p.code}`;
+        prompt += `\n  💰 ${formatPrice(p.price)}`;
+        if (p.description) prompt += `\n  📝 ${p.description}`;
+        prompt += `\n`;
       });
     });
     
+    prompt += `\n💡 INSTRUÇÕES DE FORMATAÇÃO PARA LISTAS:
+- Ao listar produtos, apresente cada um em linhas separadas
+- Use emojis para organizar visualmente (🛒 produto, 💰 preço, 📋 código)
+- NUNCA liste códigos separados por vírgula
+- Sempre formate de forma clara e organizada
+- Quando o cliente pedir uma lista, envie cada produto em bloco separado`;
+    
     prompt += `\n\n💡 Quando o cliente enviar um código de 6 caracteres, busque o produto correspondente e apresente as informações detalhadas.`;
-    prompt += `\n💡 Quando o cliente perguntar sobre produtos, use as informações acima para responder.`;
   } else {
     prompt += `\n\n📦 PRODUTOS: Nenhum produto cadastrado ainda.`;
   }
@@ -365,7 +381,8 @@ async function buildSystemPrompt(userId: string, allProducts: any[]): Promise<st
   prompt += `\n\n⚠️ IMPORTANTE:
 - Se o cliente perguntar algo que você não sabe, diga que vai verificar com a equipe
 - Nunca invente informações sobre produtos que não estão no catálogo
-- Se um código de produto não for encontrado, informe gentilmente`;
+- Se um código de produto não for encontrado, informe gentilmente
+- Ao listar múltiplos produtos, SEMPRE use formato organizado com quebras de linha`;
 
   return prompt;
 }

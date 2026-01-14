@@ -131,15 +131,25 @@ O ISA 3.0 é uma plataforma completa de atendimento automatizado via WhatsApp co
             });
 
             categories.forEach((prods, cat) => {
-                systemPrompt += `\n\n📁 CATEGORIA: ${cat}`;
+                systemPrompt += `\n\n📁 *CATEGORIA: ${cat}*`;
+                systemPrompt += `\n━━━━━━━━━━━━━━━━`;
                 prods.forEach((p: any) => {
                     const price = typeof p.price === 'number' ? this.formatPrice(p.price) : p.price;
-                    systemPrompt += `\n  • ${p.name} (${p.code || 'S/C'}) - ${price}`;
-                    if (p.description) systemPrompt += `\n    ${p.description}`;
+                    systemPrompt += `\n• *${p.name}*`;
+                    systemPrompt += `\n  📋 Código: ${p.code || 'S/C'}`;
+                    systemPrompt += `\n  💰 ${price}`;
+                    if (p.description) systemPrompt += `\n  📝 ${p.description}`;
+                    systemPrompt += `\n`;
                 });
             });
 
-            systemPrompt += `\n\n💡 Quando o cliente perguntar sobre produtos, use preferencialmente os dados acima. Se o produto não estiver na lista, informe educadamente que não o encontrou no catálogo no momento.`;
+            systemPrompt += `\n\n💡 INSTRUÇÕES DE FORMATAÇÃO:
+- Ao listar produtos, apresente cada um em linhas separadas
+- Use emojis para organizar (🛒 produto, 💰 preço, 📋 código)
+- NUNCA liste códigos separados por vírgula
+- Sempre formate de forma clara e organizada`;
+            
+            systemPrompt += `\n\n💡 Quando o cliente perguntar sobre produtos, use os dados acima. Se o produto não estiver na lista, informe educadamente.`;
         } else if (!productContext) {
             systemPrompt += `\n\n📦 PRODUTOS: Nenhum produto cadastrado no catálogo ainda. Peça para o cliente retornar em breve ou aguardar um atendente humano.`;
         }

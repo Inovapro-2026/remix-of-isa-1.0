@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { 
   FileText, Save, Loader2, Building2, User, MapPin, Clock, Megaphone, 
   Info, Phone, Link2, Copy as CopyIcon, CreditCard, Truck, Shield, 
-  RefreshCw, Wallet, DollarSign
+  RefreshCw, Wallet, DollarSign, MessageSquare, Image, Video, Upload, X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,7 +75,13 @@ const ClientMemoryBehavior = () => {
     pix_key_type: "cpf",
     pix_holder_name: "",
     pix_holder_document: "",
+    // Primeira Interação
+    first_message_prompt: "",
+    welcome_media_url: "",
+    welcome_media_type: "" as "" | "image" | "video",
   });
+  
+  const [uploadingMedia, setUploadingMedia] = useState(false);
 
   useEffect(() => {
     if (rules) {
@@ -130,6 +136,9 @@ const ClientMemoryBehavior = () => {
           official_links: cfg.company?.official_links || "",
           company_additional_info: cfg.company?.additional_info || "",
           behavior_custom_rules: cfg.behavior?.custom_rules || "",
+          first_message_prompt: cfg.first_interaction?.message_prompt || "",
+          welcome_media_url: cfg.first_interaction?.media_url || "",
+          welcome_media_type: cfg.first_interaction?.media_type || "",
         }));
       }
 
@@ -186,7 +195,12 @@ const ClientMemoryBehavior = () => {
           methods: formData.payment_methods,
           fees: formData.payment_fees,
         },
-        behavior_rules: formData.behavior_custom_rules
+        behavior_rules: formData.behavior_custom_rules,
+        first_interaction: {
+          message_prompt: formData.first_message_prompt,
+          media_url: formData.welcome_media_url,
+          media_type: formData.welcome_media_type,
+        }
       };
 
       // Save to Supabase (Cloud)
@@ -313,6 +327,84 @@ const ClientMemoryBehavior = () => {
     }
   };
 
+  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    
+    if (!isImage && !isVideo) {
+      toast.error("Por favor, envie uma imagem ou vídeo");
+      return;
+    }
+
+    // Validate file size (max 10MB for images, 50MB for videos)
+    const maxSize = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(`Arquivo muito grande. Máximo: ${isVideo ? '50MB' : '10MB'}`);
+      return;
+    }
+
+    setUploadingMedia(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Create unique file name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/welcome-media.${fileExt}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('welcome-media')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('welcome-media')
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({
+        ...prev,
+        welcome_media_url: publicUrl,
+        welcome_media_type: isImage ? 'image' : 'video'
+      }));
+
+      toast.success("Mídia de boas-vindas enviada!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao enviar mídia");
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const removeWelcomeMedia = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Try to delete from storage (ignore errors if file doesn't exist)
+      await supabase.storage
+        .from('welcome-media')
+        .remove([`${user.id}/welcome-media.*`]);
+
+      setFormData(prev => ({
+        ...prev,
+        welcome_media_url: "",
+        welcome_media_type: ""
+      }));
+
+      toast.success("Mídia removida!");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   if (loading || rulesLoading) {
     return (
       <DashboardLayout isAdmin={false}>
@@ -414,6 +506,113 @@ const ClientMemoryBehavior = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* First Interaction Message Card */}
+              <Card className="bg-[#1A1A1A] border-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-green-500" />
+                    Mensagem de Primeira Interação
+                  </CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Configure como a IA deve abordar os clientes na primeira mensagem
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={formData.first_message_prompt}
+                    onChange={(e) => setFormData({ ...formData, first_message_prompt: e.target.value })}
+                    placeholder="Exemplo de instruções para primeira interação:
+
+Ao receber a primeira mensagem de um novo cliente:
+- Cumprimente de forma calorosa e personalizada
+- Apresente-se brevemente (nome e função)
+- Mencione as principais ofertas ou promoções do dia
+- Pergunte como pode ajudar
+- Se houver mídia de boas-vindas, envie junto com a saudação
+
+Exemplo de mensagem:
+'Olá! 👋 Seja muito bem-vindo(a)! Eu sou a ISA, sua assistente virtual aqui na [Nome da Loja]! 🛍️
+Hoje temos promoções especiais esperando por você!
+Como posso te ajudar?'"
+                    className="bg-[#0D0D0D] border-gray-700 text-white min-h-[200px] font-mono text-sm"
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Welcome Media Card */}
+              <Card className="bg-[#1A1A1A] border-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Image className="h-5 w-5 text-purple-500" />
+                    Mídia de Boas-Vindas
+                  </CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Envie uma imagem ou vídeo que a IA mandará na primeira interação com cada cliente
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {formData.welcome_media_url ? (
+                    <div className="relative">
+                      {formData.welcome_media_type === 'video' ? (
+                        <video
+                          src={formData.welcome_media_url}
+                          controls
+                          className="w-full max-h-64 rounded-lg object-contain bg-black"
+                        />
+                      ) : (
+                        <img
+                          src={formData.welcome_media_url}
+                          alt="Mídia de boas-vindas"
+                          className="w-full max-h-64 rounded-lg object-contain bg-black"
+                        />
+                      )}
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2"
+                        onClick={removeWelcomeMedia}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
+                        {formData.welcome_media_type === 'video' ? (
+                          <Video className="h-4 w-4" />
+                        ) : (
+                          <Image className="h-4 w-4" />
+                        )}
+                        <span>
+                          {formData.welcome_media_type === 'video' ? 'Vídeo' : 'Imagem'} de boas-vindas configurada
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-blue-500 transition-colors bg-[#0D0D0D]">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        {uploadingMedia ? (
+                          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
+                        ) : (
+                          <Upload className="h-8 w-8 text-gray-500 mb-2" />
+                        )}
+                        <p className="text-sm text-gray-400">
+                          {uploadingMedia ? 'Enviando...' : 'Clique para enviar imagem ou vídeo'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          PNG, JPG, GIF (max. 10MB) ou MP4, MOV (max. 50MB)
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*,video/*"
+                        onChange={handleMediaUpload}
+                        disabled={uploadingMedia}
+                      />
+                    </label>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

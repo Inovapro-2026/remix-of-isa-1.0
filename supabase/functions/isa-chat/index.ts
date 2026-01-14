@@ -260,7 +260,7 @@ function formatProductsForPrompt(products: any[], title: string): string {
 }
 
 // Build system prompt based on user configuration
-async function buildSystemPrompt(userId: string, allProducts: any[]): Promise<string> {
+async function buildSystemPrompt(userId: string, allProducts: any[], isFirstInteraction: boolean = false): Promise<{ prompt: string; welcomeMedia: { url: string; type: string } | null }> {
   const [behaviorRules, company, aiMemory] = await Promise.all([
     getBehaviorRules(userId),
     getCompanyKnowledge(userId),
@@ -273,7 +273,8 @@ async function buildSystemPrompt(userId: string, allProducts: any[]): Promise<st
     hasAiMemory: !!aiMemory,
     productCount: allProducts.length,
     aiMemoryIdentity: aiMemory?.identity?.name || 'none',
-    aiMemoryCompany: aiMemory?.company?.name || 'none'
+    aiMemoryCompany: aiMemory?.company?.name || 'none',
+    isFirstInteraction
   });
 
   // Get AI identity from memory config
@@ -300,6 +301,25 @@ async function buildSystemPrompt(userId: string, allProducts: any[]): Promise<st
 - Use emojis moderadamente para tornar a conversa agradável
 - Responda sempre em português do Brasil
 - Quando o cliente perguntar sobre produtos, use as informações do catálogo fornecido`;
+
+  // Add first interaction instructions if applicable
+  const firstInteraction = aiMemory?.first_interaction;
+  let welcomeMedia: { url: string; type: string } | null = null;
+  
+  if (isFirstInteraction && firstInteraction) {
+    if (firstInteraction.message_prompt) {
+      prompt += `\n\n🎯 INSTRUÇÕES PARA PRIMEIRA INTERAÇÃO (APLIQUE AGORA):
+${firstInteraction.message_prompt}`;
+    }
+    
+    if (firstInteraction.media_url && firstInteraction.media_type) {
+      welcomeMedia = {
+        url: firstInteraction.media_url,
+        type: firstInteraction.media_type
+      };
+      prompt += `\n\n📷 MÍDIA DE BOAS-VINDAS: Você tem uma ${firstInteraction.media_type === 'video' ? 'vídeo' : 'imagem'} de boas-vindas para enviar. Mencione que está enviando algo especial junto com sua mensagem inicial.`;
+    }
+  }
 
   // Add company info from AI memory config OR company_knowledge table
   const companyData = aiMemory?.company || company;
@@ -384,7 +404,7 @@ async function buildSystemPrompt(userId: string, allProducts: any[]): Promise<st
 - Se um código de produto não for encontrado, informe gentilmente
 - Ao listar múltiplos produtos, SEMPRE use formato organizado com quebras de linha`;
 
-  return prompt;
+  return { prompt, welcomeMedia };
 }
 
 // Try calling OpenRouter with a specific model
@@ -449,7 +469,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, cpf, matricula: providedMatricula, userId: providedUserId } = await req.json();
+    const { messages, cpf, matricula: providedMatricula, userId: providedUserId, isFirstInteraction: clientFirstInteraction } = await req.json();
     const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
 
     if (!openRouterApiKey) {
@@ -478,10 +498,21 @@ serve(async (req) => {
       console.log(`Found ${allProducts.length} products for matricula ${userMatricula} / userId ${userId}`);
     }
 
+    // Detect if this is the first interaction (only 1 user message in the conversation)
+    const userMessages = messages.filter((m: any) => m.role === 'user');
+    const isFirstInteraction = clientFirstInteraction === true || userMessages.length <= 1;
+    
+    console.log('Is first interaction:', isFirstInteraction, 'User messages count:', userMessages.length);
+
     // Build system prompt with user's configuration and products
-    const systemPrompt = userId 
-      ? await buildSystemPrompt(userId, allProducts)
-      : `Você é a ISA, uma assistente de IA. Seja prestativa e amigável.`;
+    let systemPrompt = `Você é a ISA, uma assistente de IA. Seja prestativa e amigável.`;
+    let welcomeMedia: { url: string; type: string } | null = null;
+    
+    if (userId) {
+      const result = await buildSystemPrompt(userId, allProducts, isFirstInteraction);
+      systemPrompt = result.prompt;
+      welcomeMedia = result.welcomeMedia;
+    }
 
     // Get the last user message to check for product codes
     const lastUserMessage = [...messages].reverse().find((m: any) => m.role === 'user');
@@ -529,6 +560,7 @@ serve(async (req) => {
 
     console.log('System prompt length:', fullSystemPrompt.length);
     console.log('Product context:', productContext ? 'Added' : 'None');
+    console.log('Welcome media:', welcomeMedia ? `${welcomeMedia.type}: ${welcomeMedia.url}` : 'None');
 
     // Build messages for AI
     const aiMessages = [
@@ -539,7 +571,14 @@ serve(async (req) => {
     // Call OpenRouter with fallback
     const reply = await callOpenRouterWithFallback(aiMessages, openRouterApiKey);
 
-    return new Response(JSON.stringify({ message: reply }), {
+    // Return response with optional welcome media
+    const responseData: any = { message: reply };
+    
+    if (welcomeMedia && isFirstInteraction) {
+      responseData.welcomeMedia = welcomeMedia;
+    }
+
+    return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error: unknown) {

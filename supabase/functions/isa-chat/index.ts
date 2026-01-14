@@ -260,7 +260,11 @@ function formatProductsForPrompt(products: any[], title: string): string {
 }
 
 // Build system prompt based on user configuration
-async function buildSystemPrompt(userId: string, allProducts: any[], isFirstInteraction: boolean = false): Promise<{ prompt: string; welcomeMedia: { url: string; type: string } | null }> {
+async function buildSystemPrompt(userId: string, allProducts: any[], isFirstInteraction: boolean = false): Promise<{ 
+  prompt: string; 
+  welcomeMedia: { url: string; type: string } | null;
+  fixedFirstMessage: string | null;
+}> {
   const [behaviorRules, company, aiMemory] = await Promise.all([
     getBehaviorRules(userId),
     getCompanyKnowledge(userId),
@@ -302,14 +306,16 @@ async function buildSystemPrompt(userId: string, allProducts: any[], isFirstInte
 - Responda sempre em português do Brasil
 - Quando o cliente perguntar sobre produtos, use as informações do catálogo fornecido`;
 
-  // Add first interaction instructions if applicable
+  // Handle first interaction - now returns fixed message instead of prompt instructions
   const firstInteraction = aiMemory?.first_interaction;
   let welcomeMedia: { url: string; type: string } | null = null;
+  let fixedFirstMessage: string | null = null;
   
   if (isFirstInteraction && firstInteraction) {
-    if (firstInteraction.message_prompt) {
-      prompt += `\n\n🎯 INSTRUÇÕES PARA PRIMEIRA INTERAÇÃO (APLIQUE AGORA):
-${firstInteraction.message_prompt}`;
+    // If there's a fixed first message configured, return it directly
+    if (firstInteraction.message_prompt && firstInteraction.message_prompt.trim()) {
+      fixedFirstMessage = firstInteraction.message_prompt.trim();
+      console.log('First interaction: Will use fixed message');
     }
     
     if (firstInteraction.media_url && firstInteraction.media_type) {
@@ -317,7 +323,7 @@ ${firstInteraction.message_prompt}`;
         url: firstInteraction.media_url,
         type: firstInteraction.media_type
       };
-      prompt += `\n\n📷 MÍDIA DE BOAS-VINDAS: Você tem uma ${firstInteraction.media_type === 'video' ? 'vídeo' : 'imagem'} de boas-vindas para enviar. Mencione que está enviando algo especial junto com sua mensagem inicial.`;
+      console.log('First interaction: Has welcome media');
     }
   }
 
@@ -442,7 +448,7 @@ ${firstInteraction.message_prompt}`;
 - Ao listar múltiplos produtos, SEMPRE use o formato organizado com cada info em linha separada
 - NUNCA use links em formato markdown - sempre texto simples com a URL`;
 
-  return { prompt, welcomeMedia };
+  return { prompt, welcomeMedia, fixedFirstMessage };
 }
 
 // Try calling OpenRouter with a specific model
@@ -545,11 +551,31 @@ serve(async (req) => {
     // Build system prompt with user's configuration and products
     let systemPrompt = `Você é a ISA, uma assistente de IA. Seja prestativa e amigável.`;
     let welcomeMedia: { url: string; type: string } | null = null;
+    let fixedFirstMessage: string | null = null;
     
     if (userId) {
       const result = await buildSystemPrompt(userId, allProducts, isFirstInteraction);
       systemPrompt = result.prompt;
       welcomeMedia = result.welcomeMedia;
+      fixedFirstMessage = result.fixedFirstMessage;
+    }
+
+    // If this is first interaction and there's a fixed message, return it directly without AI processing
+    if (isFirstInteraction && fixedFirstMessage) {
+      console.log('Returning fixed first message directly');
+      
+      const responseData: any = { 
+        message: fixedFirstMessage,
+        isFixedFirstMessage: true
+      };
+      
+      if (welcomeMedia) {
+        responseData.welcomeMedia = welcomeMedia;
+      }
+
+      return new Response(JSON.stringify(responseData), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Get the last user message to check for product codes

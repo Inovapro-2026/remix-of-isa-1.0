@@ -399,50 +399,83 @@ async function buildSystemPrompt(userId: string, allProducts: any[], isFirstInte
     
     prompt += `
 
-⚠️⚠️⚠️ REGRAS OBRIGATÓRIAS DE FORMATAÇÃO - LEIA COM ATENÇÃO ⚠️⚠️⚠️
+⚠️⚠️⚠️ REGRAS OBRIGATÓRIAS DE FORMATAÇÃO PARA WHATSAPP ⚠️⚠️⚠️
 
-VOCÊ DEVE FORMATAR PRODUTOS EXATAMENTE ASSIM (COPIE ESTE FORMATO):
+🚫 PROIBIÇÕES ABSOLUTAS (NUNCA FAÇA ISSO):
+- NUNCA use ** para negrito - WhatsApp não renderiza
+- NUNCA use formato markdown [texto](url) para links
+- NUNCA coloque código entre parênteses ex: "Pizza (PIZ001)"
+- NUNCA faça listas com traços simples "- item"
+- NUNCA junte nome, código e preço na mesma linha
 
-🛒 *Frango Parmegiana*
+✅ FORMATO CORRETO PARA LISTAR CATEGORIAS:
+Use emojis específicos para cada categoria, exemplo:
+
+👋 Olá! Seja muito bem-vindo(a)!
+
+Sou a ${aiName}, a assistente virtual 🤖, e vou te ajudar com tudo por aqui 😊
+
+✨ Aqui estão algumas opções do nosso cardápio:
+
+🍔 Lanches – Sanduíches e combos deliciosos
+🍕 Pizzas – Vários sabores irresistíveis
+🍰 Sobremesas – Para adoçar seu dia
+🍟 Petiscos e porções – Perfeitos para compartilhar
+🥤 Sucos e bebidas – Para se refrescar
+
+🛒 Confira todos os produtos, preços e detalhes na nossa vitrine:
+👉 ${companyData?.vitrine_link || 'https://isa.inovapro.cloud/vitrine/'}
+
+Se quiser:
+📦 Ver um produto específico
+💡 Pedir uma sugestão
+🛍️ Ou já fazer seu pedido
+
+👉 É só me dizer aqui mesmo 😉
+
+✅ FORMATO CORRETO PARA MOSTRAR UM PRODUTO ESPECÍFICO:
+
+🛒 Frango Parmegiana
 📋 Código: LAN003
 💰 R$ 16,00
 📝 Acompanha arroz e fritas
 
-🛒 *Bife de Alcatra*
+(linha em branco entre produtos)
+
+🛒 Bife de Alcatra
 📋 Código: LAN002
 💰 R$ 18,00
 📝 Arroz, feijão e fritas
 
-PROIBIÇÕES ABSOLUTAS:
-❌ NUNCA escreva: *Nome (CODIGO)*: R$ XX,XX - ISTO É ERRADO
-❌ NUNCA escreva: Frango Parmegiana (LAN003): R$ 16,00 - ISTO É ERRADO  
-❌ NUNCA coloque código entre parênteses no nome
-❌ NUNCA use [Vitrine Virtual](url) - markdown não funciona no WhatsApp
-❌ NUNCA junte tudo em uma linha só
-❌ NUNCA faça lista com traços no formato "- *Produto (COD)*: preço"
+✅ FORMATO CORRETO PARA LINKS:
+🛒 Confira nossa vitrine online:
+👉 https://isa.inovapro.cloud/vitrine/123
 
-FORMATO CORRETO PARA LINKS:
-✅ Acesse nossa vitrine: https://isa.inovapro.cloud/vitrine/123
-❌ [Vitrine Virtual](https://...) - ERRADO, NÃO USE COLCHETES
+(sempre URL limpa, sem colchetes)
 
-CADA PRODUTO DEVE TER:
-- Linha 1: 🛒 *Nome do Produto* (só o nome, sem código)
-- Linha 2: 📋 Código: XXXXXX
-- Linha 3: 💰 R$ XX,XX
-- Linha 4: 📝 Descrição
-- Linha em branco antes do próximo produto`;
+💡 DICAS DE EMOJIS POR CATEGORIA:
+🍔 Lanches, hambúrgueres
+🍕 Pizzas
+🍰 Sobremesas, doces
+🍟 Petiscos, porções
+🥤 Bebidas, sucos
+🍝 Massas
+🥗 Saladas
+🍖 Carnes, churrascos`;
     
-    prompt += `\n\n💡 Quando o cliente enviar um código de 6 caracteres, busque o produto correspondente e apresente no formato acima.`;
+    prompt += `\n\n💡 Quando o cliente enviar um código de 6 caracteres, busque o produto correspondente e apresente no formato organizado acima.`;
   } else {
     prompt += `\n\n📦 PRODUTOS: Nenhum produto cadastrado ainda.`;
   }
 
-  prompt += `\n\n⚠️ IMPORTANTE:
+  prompt += `\n\n⚠️ REGRAS FINAIS:
+- Seja sempre simpático e use emojis de forma moderada
 - Se o cliente perguntar algo que você não sabe, diga que vai verificar com a equipe
 - Nunca invente informações sobre produtos que não estão no catálogo
 - Se um código de produto não for encontrado, informe gentilmente
-- Ao listar múltiplos produtos, SEMPRE use o formato organizado com cada info em linha separada
-- NUNCA use links em formato markdown - sempre texto simples com a URL`;
+- Ao listar categorias, use apenas o nome e uma descrição curta (sem códigos/preços)
+- Ao mostrar produto específico, use o formato com código e preço em linhas separadas
+- NUNCA use ** ou [] - WhatsApp não renderiza markdown`;
 
   return { prompt, welcomeMedia, fixedFirstMessage };
 }

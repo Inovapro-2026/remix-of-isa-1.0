@@ -510,35 +510,40 @@ const ClientMemoryBehavior = () => {
               </Card>
 
               {/* First Interaction Message Card */}
-              <Card className="bg-[#1A1A1A] border-gray-800">
+              <Card className="bg-[#1A1A1A] border-gray-800 border-l-4 border-l-green-500">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <MessageSquare className="h-5 w-5 text-green-500" />
                     Mensagem de Primeira Interação
                   </CardTitle>
                   <CardDescription className="text-gray-400">
-                    Configure como a IA deve abordar os clientes na primeira mensagem
+                    Digite a mensagem EXATA que o bot enviará na primeira interação. Após 30 minutos sem interação, essa mensagem será enviada novamente quando o cliente mandar uma nova mensagem.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-sm text-green-400">
+                    💡 <strong>Como funciona:</strong> Quando um cliente enviar a primeira mensagem (ou após 30min de inatividade), o bot enviará automaticamente o texto abaixo. Depois disso, a IA responderá normalmente às próximas mensagens.
+                  </div>
                   <Textarea
                     value={formData.first_message_prompt}
                     onChange={(e) => setFormData({ ...formData, first_message_prompt: e.target.value })}
-                    placeholder="Exemplo de instruções para primeira interação:
+                    placeholder="Digite aqui a mensagem exata que o bot vai enviar:
 
-Ao receber a primeira mensagem de um novo cliente:
-- Cumprimente de forma calorosa e personalizada
-- Apresente-se brevemente (nome e função)
-- Mencione as principais ofertas ou promoções do dia
-- Pergunte como pode ajudar
-- Se houver mídia de boas-vindas, envie junto com a saudação
+Exemplo:
+Olá! 👋 Seja muito bem-vindo(a)!
 
-Exemplo de mensagem:
-'Olá! 👋 Seja muito bem-vindo(a)! Eu sou a ISA, sua assistente virtual aqui na [Nome da Loja]! 🛍️
-Hoje temos promoções especiais esperando por você!
-Como posso te ajudar?'"
-                    className="bg-[#0D0D0D] border-gray-700 text-white min-h-[200px] font-mono text-sm"
+Eu sou a ISA, sua assistente virtual aqui na Loja XYZ! 🛍️
+
+📦 Confira nossas ofertas do dia
+💳 Aceitamos PIX e Cartão
+🚚 Entrega rápida para sua região
+
+Como posso te ajudar hoje?"
+                    className="bg-[#0D0D0D] border-gray-700 text-white min-h-[200px] text-sm"
                   />
+                  <p className="text-xs text-gray-500">
+                    ⚠️ Este texto será enviado exatamente como você digitar. Use emojis e quebras de linha para deixar a mensagem bonita no WhatsApp.
+                  </p>
                 </CardContent>
               </Card>
 

@@ -306,24 +306,29 @@ async function buildSystemPrompt(userId: string, allProducts: any[], isFirstInte
 - Responda sempre em português do Brasil
 - Quando o cliente perguntar sobre produtos, use as informações do catálogo fornecido`;
 
-  // Handle first interaction - now returns fixed message instead of prompt instructions
+  // Handle first interaction - check for fixed message
   const firstInteraction = aiMemory?.first_interaction;
   let welcomeMedia: { url: string; type: string } | null = null;
   let fixedFirstMessage: string | null = null;
   
-  if (isFirstInteraction && firstInteraction) {
-    // If there's a fixed first message configured, return it directly
-    if (firstInteraction.message_prompt && firstInteraction.message_prompt.trim()) {
-      fixedFirstMessage = firstInteraction.message_prompt.trim();
-      console.log('First interaction: Will use fixed message');
-    }
-    
+  // Always check for welcome media (even if not first interaction for caching purposes)
+  if (firstInteraction) {
     if (firstInteraction.media_url && firstInteraction.media_type) {
       welcomeMedia = {
         url: firstInteraction.media_url,
         type: firstInteraction.media_type
       };
-      console.log('First interaction: Has welcome media');
+      console.log('Welcome media configured:', welcomeMedia.type);
+    }
+  }
+  
+  // For first interaction, check for fixed message
+  if (isFirstInteraction && firstInteraction) {
+    // If there's a fixed first message configured, return it directly (not as prompt)
+    const fixedMessage = firstInteraction.message_prompt || firstInteraction.fixed_message;
+    if (fixedMessage && typeof fixedMessage === 'string' && fixedMessage.trim()) {
+      fixedFirstMessage = fixedMessage.trim();
+      console.log('First interaction: Will use fixed message');
     }
   }
 
@@ -394,47 +399,38 @@ async function buildSystemPrompt(userId: string, allProducts: any[], isFirstInte
     
     prompt += `
 
-📝 INSTRUÇÕES CRÍTICAS DE FORMATAÇÃO PARA WHATSAPP:
+⚠️⚠️⚠️ REGRAS OBRIGATÓRIAS DE FORMATAÇÃO - LEIA COM ATENÇÃO ⚠️⚠️⚠️
 
-1. FORMATO OBRIGATÓRIO PARA CADA PRODUTO:
-   Use EXATAMENTE este formato (cada item em linha separada):
-   
-   🛒 *Nome do Produto*
-   📋 Código: XXXXXX
-   💰 Preço: R$ XX,XX
-   📝 Descrição do produto
-   
-   (linha em branco entre produtos)
+VOCÊ DEVE FORMATAR PRODUTOS EXATAMENTE ASSIM (COPIE ESTE FORMATO):
 
-2. REGRAS DE FORMATAÇÃO:
-   - NUNCA coloque o código entre parênteses ao lado do nome
-   - NUNCA use formato "(CODIGO)" - sempre "Código: XXXXXX"
-   - Cada informação DEVE estar em sua própria linha
-   - Use uma linha em branco entre cada produto
-   - Use *asteriscos* para negrito no nome
+🛒 *Frango Parmegiana*
+📋 Código: LAN003
+💰 R$ 16,00
+📝 Acompanha arroz e fritas
 
-3. LINKS DA VITRINE:
-   - NUNCA use formato markdown [texto](url)
-   - Escreva: "Acesse nossa vitrine: " seguido da URL completa
-   - O link deve ficar sozinho, sem colchetes
+🛒 *Bife de Alcatra*
+📋 Código: LAN002
+💰 R$ 18,00
+📝 Arroz, feijão e fritas
 
-4. EXEMPLO CORRETO:
-   
-   🛒 *Frango Parmegiana*
-   📋 Código: LAN003
-   💰 Preço: R$ 16,00
-   📝 Acompanha arroz e fritas
-   
-   🛒 *Bife de Alcatra*
-   📋 Código: LAN002
-   💰 Preço: R$ 18,00
-   📝 Arroz, feijão e fritas
-   
-   Acesse nossa vitrine: https://exemplo.com/vitrine/123
+PROIBIÇÕES ABSOLUTAS:
+❌ NUNCA escreva: *Nome (CODIGO)*: R$ XX,XX - ISTO É ERRADO
+❌ NUNCA escreva: Frango Parmegiana (LAN003): R$ 16,00 - ISTO É ERRADO  
+❌ NUNCA coloque código entre parênteses no nome
+❌ NUNCA use [Vitrine Virtual](url) - markdown não funciona no WhatsApp
+❌ NUNCA junte tudo em uma linha só
+❌ NUNCA faça lista com traços no formato "- *Produto (COD)*: preço"
 
-5. EXEMPLO INCORRETO (NÃO FAÇA ISSO):
-   - *Frango Parmegiana (LAN003)*: R$ 16,00
-   - [Vitrine Virtual](https://...)`;
+FORMATO CORRETO PARA LINKS:
+✅ Acesse nossa vitrine: https://isa.inovapro.cloud/vitrine/123
+❌ [Vitrine Virtual](https://...) - ERRADO, NÃO USE COLCHETES
+
+CADA PRODUTO DEVE TER:
+- Linha 1: 🛒 *Nome do Produto* (só o nome, sem código)
+- Linha 2: 📋 Código: XXXXXX
+- Linha 3: 💰 R$ XX,XX
+- Linha 4: 📝 Descrição
+- Linha em branco antes do próximo produto`;
     
     prompt += `\n\n💡 Quando o cliente enviar um código de 6 caracteres, busque o produto correspondente e apresente no formato acima.`;
   } else {

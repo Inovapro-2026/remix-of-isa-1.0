@@ -48,6 +48,7 @@ import ClientLandingPage from "./pages/client/ClientLandingPage";
 import ClientSaldo from "./pages/client/ClientSaldo";
 import ClientSaque from "./pages/client/ClientSaque";
 import ClientSales from "./pages/client/ClientSales";
+import ClientOrders from "./pages/client/ClientOrders";
 import Vitrine from "./pages/Vitrine";
 import LandingPage from "./pages/LandingPage";
 import ProductPage from "./pages/ProductPage";
@@ -224,6 +225,11 @@ const App = () => (
             <Route path="/client/vendas" element={
               <ProtectedRoute clientOnly>
                 <ClientSales />
+              </ProtectedRoute>
+            } />
+            <Route path="/client/pedidos" element={
+              <ProtectedRoute clientOnly>
+                <ClientOrders />
               </ProtectedRoute>
             } />
 

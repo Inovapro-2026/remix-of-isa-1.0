@@ -19,7 +19,8 @@ import {
   CreditCard,
   Wallet,
   ArrowDownCircle,
-  ShoppingCart
+  ShoppingCart,
+  Package
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ const clientMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard/client" },
   { icon: Bot, label: "Meu WhatsApp", path: "/client/whatsapp" },
   { icon: ShoppingCart, label: "Vendas", path: "/client/vendas" },
+  { icon: Package, label: "Pedidos", path: "/client/pedidos" },
   { icon: ArrowDownCircle, label: "Saques", path: "/client/saque" },
   { icon: CreditCard, label: "Planos", path: "/client/planos" },
   { icon: FileText, label: "Memória de Comportamento", path: "/client/memoria-ia" },

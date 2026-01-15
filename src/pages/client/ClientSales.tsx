@@ -205,7 +205,7 @@ const ClientSales = () => {
     const formattedPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
     
     const { error } = await supabase.functions.invoke('whatsapp-proxy/send', {
-      body: { phone: formattedPhone, message }
+      body: { number: formattedPhone, message }
     });
 
     if (error) throw error;
@@ -278,7 +278,7 @@ const ClientSales = () => {
 
           if (deliveryMessage) {
             await supabase.functions.invoke('whatsapp-proxy/send', {
-              body: { phone: formattedPhone, message: deliveryMessage }
+              body: { number: formattedPhone, message: deliveryMessage }
             });
           }
         }
@@ -286,7 +286,7 @@ const ClientSales = () => {
 
       const thankYouMsg = `✨ *Entrega Concluída!* ✨\n\nSeu produto foi entregue! Guarde as mensagens acima.\n\nObrigado pela preferência! 💚`;
       await supabase.functions.invoke('whatsapp-proxy/send', {
-        body: { phone: formattedPhone, message: thankYouMsg }
+        body: { number: formattedPhone, message: thankYouMsg }
       });
 
       await supabase

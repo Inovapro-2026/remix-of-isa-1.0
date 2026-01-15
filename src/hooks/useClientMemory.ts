@@ -18,6 +18,7 @@ interface AIMemoryConfig {
   };
   products?: Array<{ id: string; code: string | null; name: string; price: number; description: string | null; image_url?: string | null; category?: string | null }>;
   vitrine?: { config: any };
+  landingPage?: { config: any };
 }
 
 export const useClientMemory = () => {
@@ -175,6 +176,7 @@ export const useClientMemory = () => {
     identity: config.identity,
     company: config.company,
     products: config.products || [],
-    vitrine: config.vitrine
+    vitrine: config.vitrine,
+    landingPage: config.landingPage
   };
 };

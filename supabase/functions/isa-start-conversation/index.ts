@@ -76,7 +76,7 @@ Como posso te ajudar? 😊`;
         'Authorization': `Bearer ${supabaseKey}`,
       },
       body: JSON.stringify({
-        phone: formattedPhone,
+        number: formattedPhone,
         message: initialMessage,
       }),
     });

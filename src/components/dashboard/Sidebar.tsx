@@ -34,6 +34,7 @@ interface SidebarProps {
 
 const adminMenuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard/admin" },
+  { icon: Users, label: "Assinantes", path: "/admin/assinantes" },
   { icon: ShoppingCart, label: "Vendas", path: "/admin/vendas" },
   { icon: Users, label: "Clientes", path: "/admin/clientes" },
   { icon: Store, label: "Vitrines", path: "/admin/vitrines" },

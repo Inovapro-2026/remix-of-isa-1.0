@@ -259,121 +259,34 @@ function formatProductsForPrompt(products: any[], title: string): string {
   return formatted;
 }
 
-// Build system prompt based on user configuration
+// Build system prompt based on user configuration - ONLY from AI Memory (client_ai_memory)
 async function buildSystemPrompt(userId: string, allProducts: any[], isFirstInteraction: boolean = false): Promise<{ 
   prompt: string; 
   welcomeMedia: { url: string; type: string } | null;
   fixedFirstMessage: string | null;
 }> {
-  const [behaviorRules, company, aiMemory] = await Promise.all([
-    getBehaviorRules(userId),
-    getCompanyKnowledge(userId),
-    getAIMemoryConfig(userId),
-  ]);
+  // Get ONLY the AI Memory config - this is the single source of truth
+  const aiMemory = await getAIMemoryConfig(userId);
 
-  console.log('Building prompt with:', {
-    hasBehaviorRules: !!behaviorRules,
-    hasCompany: !!company,
+  console.log('Building prompt with AI Memory only:', {
     hasAiMemory: !!aiMemory,
     productCount: allProducts.length,
-    aiMemoryIdentity: aiMemory?.identity?.name || 'none',
-    aiMemoryCompany: aiMemory?.company?.name || 'none',
     isFirstInteraction
   });
 
-  // Get AI identity from memory config
-  const identity = aiMemory?.identity;
-  const aiName = identity?.name || 'ISA';
-  const aiFunction = identity?.function || 'assistente virtual de atendimento';
+  // Get behavior instructions from AI Memory
+  const behaviorInstructions = aiMemory?.behavior?.custom_rules || aiMemory?.behavior_rules || '';
 
-  // Get tone of voice
-  const toneMap: Record<string, string> = {
-    'formal': 'formal e profissional',
-    'vendedor': 'persuasivo e focado em vendas',
-    'amigavel': 'amigável e acolhedor',
-    'premium': 'sofisticado e premium',
-    'tecnico': 'técnico e especializado',
-    'jovem': 'jovem e descontraído'
-  };
-  const behavior = aiMemory?.behavior;
-  const tone = behavior?.tone ? toneMap[behavior.tone] || behavior.tone : 'amigável e profissional';
-
-  let prompt = `Você é ${aiName}, ${aiFunction}.
-
-📌 INSTRUÇÕES GERAIS:
-- Seu tom de voz deve ser ${tone}
-- Use emojis moderadamente para tornar a conversa agradável
-- Responda sempre em português do Brasil
-- Quando o cliente perguntar sobre produtos, use as informações do catálogo fornecido`;
-
-  // Handle first interaction - check for fixed message
-  const firstInteraction = aiMemory?.first_interaction;
   let welcomeMedia: { url: string; type: string } | null = null;
   let fixedFirstMessage: string | null = null;
-  
-  // Always check for welcome media (even if not first interaction for caching purposes)
-  if (firstInteraction) {
-    if (firstInteraction.media_url && firstInteraction.media_type) {
-      welcomeMedia = {
-        url: firstInteraction.media_url,
-        type: firstInteraction.media_type
-      };
-      console.log('Welcome media configured:', welcomeMedia.type);
-    }
-  }
-  
-  // For first interaction, check for fixed message
-  if (isFirstInteraction && firstInteraction) {
-    // If there's a fixed first message configured, return it directly (not as prompt)
-    const fixedMessage = firstInteraction.message_prompt || firstInteraction.fixed_message;
-    if (fixedMessage && typeof fixedMessage === 'string' && fixedMessage.trim()) {
-      fixedFirstMessage = fixedMessage.trim();
-      console.log('First interaction: Will use fixed message');
-    }
-  }
 
-  // Add company info from AI memory config OR company_knowledge table
-  const companyData = aiMemory?.company || company;
-  if (companyData) {
-    prompt += `\n\n🏢 INFORMAÇÕES DA EMPRESA:`;
-    if (companyData.name) prompt += `\n- Nome da empresa: ${companyData.name}`;
-    if (companyData.industry) prompt += `\n- Ramo/Nicho: ${companyData.industry}`;
-    if (companyData.segment) prompt += `\n- Segmento: ${companyData.segment}`;
-    if (companyData.target_audience) prompt += `\n- Público-alvo: ${companyData.target_audience}`;
-    if (companyData.differentials) prompt += `\n- Diferenciais: ${companyData.differentials}`;
-    if (companyData.mission) prompt += `\n- Missão: ${companyData.mission}`;
-    if (companyData.business_hours || companyData.hours) prompt += `\n- Horário de atendimento: ${companyData.business_hours || companyData.hours}`;
-    if (companyData.location || companyData.address) prompt += `\n- Localização: ${companyData.location || companyData.address}`;
-    if (companyData.promotions) prompt += `\n- Promoções ativas: ${companyData.promotions}`;
-    if (companyData.vitrine_link) prompt += `\n- Link da vitrine: ${companyData.vitrine_link}`;
-    if (companyData.official_links) prompt += `\n- Links oficiais:\n${companyData.official_links}`;
-    if (companyData.additional_info) prompt += `\n- Instruções adicionais:\n${companyData.additional_info}`;
-  }
+  // Build simple prompt focused on behavior instructions
+  let prompt = `Você é uma assistente virtual de vendas.
 
-  // Add policies from AI memory config
-  const policies = aiMemory?.policies;
-  if (policies) {
-    prompt += `\n\n📋 POLÍTICAS DA EMPRESA:`;
-    if (policies.delivery) prompt += `\n- Política de Entrega: ${policies.delivery}`;
-    if (policies.warranty) prompt += `\n- Política de Garantia: ${policies.warranty}`;
-    if (policies.exchange) prompt += `\n- Política de Trocas/Devoluções: ${policies.exchange}`;
-  }
+📌 INSTRUÇÕES DE COMPORTAMENTO:
+${behaviorInstructions || 'Seja educada, simpática e ajude os clientes com informações sobre produtos.'}`;
 
-  // Add payment info from AI memory config
-  const payments = aiMemory?.payments;
-  if (payments) {
-    prompt += `\n\n💳 FORMAS DE PAGAMENTO:`;
-    if (payments.methods) prompt += `\n- Métodos aceitos: ${payments.methods}`;
-    if (payments.fees) prompt += `\n- Taxas e prazos: ${payments.fees}`;
-  }
-
-  // Add behavior rules from ai_behavior_rules OR from AI memory config
-  const rules = behaviorRules || behavior?.custom_rules || behavior?.rules;
-  if (rules) {
-    prompt += `\n\n📋 REGRAS DE COMPORTAMENTO CUSTOMIZADAS:\n${rules}`;
-  }
-
-  // Add product catalog summary
+  // Add product catalog
   if (allProducts.length > 0) {
     prompt += `\n\n📦 CATÁLOGO DE PRODUTOS (${allProducts.length} itens disponíveis):`;
     
@@ -386,95 +299,24 @@ async function buildSystemPrompt(userId: string, allProducts: any[], isFirstInte
     });
     
     categories.forEach((prods, cat) => {
-      prompt += `\n\n📁 *${cat}*`;
-      prompt += `\n━━━━━━━━━━━━━━━━`;
+      prompt += `\n\n📁 ${cat}:`;
       prods.forEach(p => {
-        prompt += `\n• *${p.name}*`;
-        prompt += `\n  📋 Código: ${p.code}`;
-        prompt += `\n  💰 ${formatPrice(p.price)}`;
-        if (p.description) prompt += `\n  📝 ${p.description}`;
-        prompt += `\n`;
+        prompt += `\n• ${p.name}`;
+        if (p.code) prompt += ` - Código: ${p.code}`;
+        prompt += ` - R$ ${p.price.toFixed(2).replace('.', ',')}`;
+        if (p.description) prompt += `\n  ${p.description}`;
       });
     });
-    
-    prompt += `
-
-⚠️⚠️⚠️ REGRAS OBRIGATÓRIAS DE FORMATAÇÃO PARA WHATSAPP ⚠️⚠️⚠️
-
-🚫 PROIBIÇÕES ABSOLUTAS (NUNCA FAÇA ISSO):
-- NUNCA use ** para negrito - WhatsApp não renderiza
-- NUNCA use formato markdown [texto](url) para links
-- NUNCA coloque código entre parênteses ex: "Pizza (PIZ001)"
-- NUNCA faça listas com traços simples "- item"
-- NUNCA junte nome, código e preço na mesma linha
-
-✅ FORMATO CORRETO PARA LISTAR CATEGORIAS:
-Use emojis específicos para cada categoria, exemplo:
-
-👋 Olá! Seja muito bem-vindo(a)!
-
-Sou a ${aiName}, a assistente virtual 🤖, e vou te ajudar com tudo por aqui 😊
-
-✨ Aqui estão algumas opções do nosso cardápio:
-
-🍔 Lanches – Sanduíches e combos deliciosos
-🍕 Pizzas – Vários sabores irresistíveis
-🍰 Sobremesas – Para adoçar seu dia
-🍟 Petiscos e porções – Perfeitos para compartilhar
-🥤 Sucos e bebidas – Para se refrescar
-
-🛒 Confira todos os produtos, preços e detalhes na nossa vitrine:
-👉 ${companyData?.vitrine_link || 'https://isa.inovapro.cloud/vitrine/'}
-
-Se quiser:
-📦 Ver um produto específico
-💡 Pedir uma sugestão
-🛍️ Ou já fazer seu pedido
-
-👉 É só me dizer aqui mesmo 😉
-
-✅ FORMATO CORRETO PARA MOSTRAR UM PRODUTO ESPECÍFICO:
-
-🛒 Frango Parmegiana
-📋 Código: LAN003
-💰 R$ 16,00
-📝 Acompanha arroz e fritas
-
-(linha em branco entre produtos)
-
-🛒 Bife de Alcatra
-📋 Código: LAN002
-💰 R$ 18,00
-📝 Arroz, feijão e fritas
-
-✅ FORMATO CORRETO PARA LINKS:
-🛒 Confira nossa vitrine online:
-👉 https://isa.inovapro.cloud/vitrine/123
-
-(sempre URL limpa, sem colchetes)
-
-💡 DICAS DE EMOJIS POR CATEGORIA:
-🍔 Lanches, hambúrgueres
-🍕 Pizzas
-🍰 Sobremesas, doces
-🍟 Petiscos, porções
-🥤 Bebidas, sucos
-🍝 Massas
-🥗 Saladas
-🍖 Carnes, churrascos`;
-    
-    prompt += `\n\n💡 Quando o cliente enviar um código de 6 caracteres, busque o produto correspondente e apresente no formato organizado acima.`;
   } else {
     prompt += `\n\n📦 PRODUTOS: Nenhum produto cadastrado ainda.`;
   }
 
   prompt += `\n\n⚠️ REGRAS FINAIS:
-- Seja sempre simpático e use emojis de forma moderada
-- Se o cliente perguntar algo que você não sabe, diga que vai verificar com a equipe
+- Responda sempre em português do Brasil
+- Use emojis de forma moderada
+- Se o cliente perguntar algo que você não sabe, diga que vai verificar
 - Nunca invente informações sobre produtos que não estão no catálogo
-- Se um código de produto não for encontrado, informe gentilmente
-- Ao listar categorias, use apenas o nome e uma descrição curta (sem códigos/preços)
-- Ao mostrar produto específico, use o formato com código e preço em linhas separadas
+- Para negrito no WhatsApp use *texto* (asteriscos simples)
 - NUNCA use ** ou [] - WhatsApp não renderiza markdown`;
 
   return { prompt, welcomeMedia, fixedFirstMessage };

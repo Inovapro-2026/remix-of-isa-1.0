@@ -48,6 +48,7 @@ import ClientLandingPage from "./pages/client/ClientLandingPage";
 import ClientSaldo from "./pages/client/ClientSaldo";
 import ClientSaque from "./pages/client/ClientSaque";
 import ClientSales from "./pages/client/ClientSales";
+import ClientFinanceiro from "./pages/client/ClientFinanceiro";
 
 import Vitrine from "./pages/Vitrine";
 import LandingPage from "./pages/LandingPage";
@@ -227,7 +228,11 @@ const App = () => (
                 <ClientSales />
               </ProtectedRoute>
             } />
-
+            <Route path="/client/financeiro" element={
+              <ProtectedRoute clientOnly>
+                <ClientFinanceiro />
+              </ProtectedRoute>
+            } />
             {/* Public Vitrine Routes */}
             <Route path="/vitrine/:cpf" element={<Vitrine />} />
             <Route path="/vitrine/:cpf/produto/:productId" element={<ProductPage />} />

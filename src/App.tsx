@@ -44,10 +44,12 @@ import ClientCategories from "./pages/client/ClientCategories";
 import ClientIsaTest from "./pages/client/ClientIsaTest";
 import ClientMemoryBehavior from "./pages/client/ClientMemoryBehavior";
 import ClientVitrine from "./pages/client/ClientVitrine";
+import ClientLandingPage from "./pages/client/ClientLandingPage";
 import ClientSaldo from "./pages/client/ClientSaldo";
 import ClientSaque from "./pages/client/ClientSaque";
 import ClientSales from "./pages/client/ClientSales";
 import Vitrine from "./pages/Vitrine";
+import LandingPage from "./pages/LandingPage";
 import ProductPage from "./pages/ProductPage";
 import OrderTracking from "./pages/OrderTracking";
 
@@ -202,6 +204,11 @@ const App = () => (
                 <ClientVitrine />
               </ProtectedRoute>
             } />
+            <Route path="/client/landing-page" element={
+              <ProtectedRoute clientOnly>
+                <ClientLandingPage />
+              </ProtectedRoute>
+            } />
             <Route path="/client/saldo" element={
               <ProtectedRoute clientOnly>
                 <ClientSaldo />
@@ -223,6 +230,9 @@ const App = () => (
             {/* Public Vitrine Routes */}
             <Route path="/vitrine/:cpf" element={<Vitrine />} />
             <Route path="/vitrine/:cpf/produto/:productId" element={<ProductPage />} />
+
+            {/* Public Landing Page Route */}
+            <Route path="/lp/:id" element={<LandingPage />} />
 
             {/* Public Order Tracking Route */}
             <Route path="/rastrear" element={<OrderTracking />} />

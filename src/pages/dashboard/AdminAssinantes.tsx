@@ -179,6 +179,26 @@ const AdminAssinantes = () => {
     try {
       // Delete related records first
       if (selectedClient.user_id) {
+        // Delete WhatsApp related data first (has foreign keys)
+        const { data: instances } = await supabase
+          .from("whatsapp_instances")
+          .select("id")
+          .eq("user_id", selectedClient.user_id);
+        
+        if (instances && instances.length > 0) {
+          const instanceIds = instances.map(i => i.id);
+          // Delete messages, contacts, carts and memory for each instance
+          for (const instanceId of instanceIds) {
+            await supabase.from("whatsapp_messages").delete().eq("instance_id", instanceId);
+            await supabase.from("whatsapp_contacts").delete().eq("instance_id", instanceId);
+            await supabase.from("whatsapp_shopping_cart").delete().eq("instance_id", instanceId);
+            await supabase.from("whatsapp_conversation_memory").delete().eq("instance_id", instanceId);
+          }
+          // Delete the instances
+          await supabase.from("whatsapp_instances").delete().eq("user_id", selectedClient.user_id);
+        }
+
+        // Delete other related records
         await supabase.from("products").delete().eq("user_id", selectedClient.user_id);
         await supabase.from("categories").delete().eq("user_id", selectedClient.user_id);
         await supabase.from("client_ai_memory").delete().eq("user_id", selectedClient.user_id);
@@ -186,8 +206,18 @@ const AdminAssinantes = () => {
         await supabase.from("company_knowledge").delete().eq("user_id", selectedClient.user_id);
         await supabase.from("seller_balances").delete().eq("user_id", selectedClient.user_id);
         await supabase.from("seller_pix_info").delete().eq("user_id", selectedClient.user_id);
+        await supabase.from("ai_configs").delete().eq("user_id", selectedClient.user_id);
         await supabase.from("user_roles").delete().eq("user_id", selectedClient.user_id);
+        
+        // Delete profile (must be last as other tables may reference it)
         await supabase.from("profiles").delete().eq("id", selectedClient.user_id);
+      }
+
+      // Delete by matricula as fallback for orphaned records
+      if (selectedClient.matricula) {
+        await supabase.from("products").delete().eq("matricula", selectedClient.matricula);
+        await supabase.from("ai_behavior_rules").delete().eq("matricula", selectedClient.matricula);
+        await supabase.from("ai_local_memory").delete().eq("matricula", selectedClient.matricula);
       }
 
       const { error } = await supabase
@@ -197,13 +227,13 @@ const AdminAssinantes = () => {
 
       if (error) throw error;
 
-      toast.success("Cliente excluído com sucesso");
+      toast.success("Cliente e todos os dados relacionados excluídos com sucesso");
       setDeleteDialogOpen(false);
       setSelectedClient(null);
       fetchClients();
     } catch (error) {
       console.error("Erro ao excluir cliente:", error);
-      toast.error("Erro ao excluir cliente");
+      toast.error("Erro ao excluir cliente. Verifique se há dados relacionados.");
     } finally {
       setIsProcessing(false);
     }
